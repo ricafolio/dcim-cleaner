@@ -80,8 +80,10 @@
                 android:id="@+id/btn_trash"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:checked="false" />
-
+                android:checked="false"
+                app:thumbTint="@color/switch_thumb_tint"
+                app:trackTint="@color/switch_track_tint"
+                xmlns:app="http://schemas.android.com/apk/res-auto" />
         </LinearLayout>
 
     </LinearLayout>

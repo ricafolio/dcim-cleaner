@@ -7,4 +7,10 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="trash_red">#FFE53935</color>
+    <color name="trash_red_dim">#55E53935</color>
+
+    <!-- Softer primary for text labels -->
+    <color name="primary_soft">#FF9E77ED</color>
+    <color name="primary_soft_dark">#FFBA9BF5</color>
 </resources>
