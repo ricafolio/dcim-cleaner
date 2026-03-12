@@ -77,13 +77,14 @@ class SettingsFragment : Fragment() {
         binding.btnReindex.setOnClickListener {
             lifecycleScope.launch {
                 repo.clearIndex()
-                android.widget.Toast.makeText(
-                    requireContext(),
-                    "Re-indexing with updated folder settings…",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
             }
-            (activity as? MainActivity)?.launchIndexWorker()
+            // Enqueue directly without going through MainActivity's progress bar
+            IndexWorker.enqueue(requireContext())
+            android.widget.Toast.makeText(
+                requireContext(),
+                "Re-indexing with updated folder settings…",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
