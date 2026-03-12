@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DCIM Cleaner</string>
+    <string name="nav_header_title">DCIM Cleaner</string>
+    <string name="nav_header_subtitle">Clean up your photos</string>
+    <string name="open_nav">Open navigation drawer</string>
+    <string name="close_nav">Close navigation drawer</string>
+</resources>

@@ -1,0 +1,24 @@
+# Gradle & Build
+.gradle/
+build/
+*.apk
+*.aab
+*.ap_
+*.hprof
+output-metadata.json
+
+# Local Configuration & Sensitive Data
+local.properties
+*.jks
+*.keystore
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS Specific
+.DS_Store
+Thumbs.db
