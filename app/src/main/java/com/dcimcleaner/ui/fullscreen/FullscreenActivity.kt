@@ -86,8 +86,36 @@ class FullscreenActivity : AppCompatActivity() {
         }
 
         binding.btnBack.setOnClickListener { finish() }
+
     }
 
+    private var touchStartY = 0f
+    private var touchStartX = 0f
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        when (ev.action) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                touchStartY = ev.y
+                touchStartX = ev.x
+            }
+            android.view.MotionEvent.ACTION_UP -> {
+                val deltaY = ev.y - touchStartY
+                val deltaX = kotlin.math.abs(ev.x - touchStartX)
+                if (deltaY > 200 && deltaX < deltaY * 0.5f) {
+                    if (android.os.Build.VERSION.SDK_INT >= 34) {
+                        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0,
+                            com.dcimcleaner.R.anim.slide_down)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        overridePendingTransition(0, com.dcimcleaner.R.anim.slide_down)
+                    }
+                    finish()
+                    return true
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
     private fun trashCurrent(entry: PhotoEntry) {
         lifecycleScope.launch {
             when (val result = repo.moveToTrash(entry)) {
