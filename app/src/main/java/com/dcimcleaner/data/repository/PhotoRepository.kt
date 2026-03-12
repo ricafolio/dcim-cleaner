@@ -1,6 +1,5 @@
 package com.dcimcleaner.data.repository
 
-import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
@@ -28,9 +27,13 @@ class PhotoRepository(private val context: Context) {
     private val db = AppDatabase.getInstance(context)
     private val photoDao = db.photoDao()
     private val statsDao = db.statsDao()
+    private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     val monthStats = statsDao.getMonthStats()
     val dayStats = statsDao.getDayStats()
+
+    private fun getIgnoredFolders(): Set<String> =
+        prefs.getStringSet("ignored_folders", emptySet()) ?: emptySet()
 
     suspend fun buildIndex(onProgress: (Int) -> Unit) = withContext(Dispatchers.IO) {
         photoDao.clearAll()
@@ -48,8 +51,18 @@ class PhotoRepository(private val context: Context) {
         )
 
         val dcimPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath
-        val selection = "${MediaStore.Images.Media.DATA} LIKE ?"
-        val selectionArgs = arrayOf("$dcimPath%")
+        val ignoredFolders = getIgnoredFolders()
+
+        // Build selection: include DCIM path, exclude each ignored folder
+        val selectionParts = mutableListOf("${MediaStore.Images.Media.DATA} LIKE ?")
+        val selectionArgsList = mutableListOf("$dcimPath%")
+        ignoredFolders.forEach { folder ->
+            selectionParts.add("${MediaStore.Images.Media.DATA} NOT LIKE ?")
+            selectionArgsList.add("$dcimPath/$folder/%")
+        }
+
+        val selection = selectionParts.joinToString(" AND ")
+        val selectionArgs = selectionArgsList.toTypedArray()
         val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} ASC"
 
         val uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
@@ -122,6 +135,12 @@ class PhotoRepository(private val context: Context) {
         statsDao.insertDayStats(dayStats)
     }
 
+    suspend fun clearIndex() = withContext(Dispatchers.IO) {
+        photoDao.clearAll()
+        statsDao.clearMonthStats()
+        statsDao.clearDayStats()
+    }
+
     suspend fun getRandomMonthPhotos(): Pair<String, List<PhotoEntry>> {
         val keys = photoDao.getAllMonthKeys()
         val key = keys.randomOrNull() ?: return Pair("", emptyList())
@@ -173,16 +192,10 @@ class PhotoRepository(private val context: Context) {
 
     suspend fun retryTrashAfterPermission(uri: String): Boolean = withContext(Dispatchers.IO) {
         return@withContext try {
-            val values = ContentValues().apply {
-                put(MediaStore.Images.Media.IS_TRASHED, 1)
-            }
+            val values = ContentValues().apply { put(MediaStore.Images.Media.IS_TRASHED, 1) }
             val rows = context.contentResolver.update(Uri.parse(uri), values, null, null)
-            android.util.Log.d("TRASH", "Post-permission trash rows: $rows")
             rows > 0
-        } catch (e: Exception) {
-            android.util.Log.e("TRASH", "Post-permission trash failed: ${e.message}")
-            false
-        }
+        } catch (e: Exception) { false }
     }
 
     suspend fun deleteViaContentResolver(entry: PhotoEntry) = withContext(Dispatchers.IO) {

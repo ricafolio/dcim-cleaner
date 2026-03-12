@@ -38,13 +38,15 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Toolbar is inside the included app_bar_main layout
         setSupportActionBar(binding.appBarMain.toolbar)
 
         repo = PhotoRepository(this)
 
         val navController = findNavController(R.id.nav_host_fragment)
-        appBarConfig = AppBarConfiguration(setOf(R.id.nav_images, R.id.nav_analyzer), binding.drawerLayout)
+        appBarConfig = AppBarConfiguration(
+            setOf(R.id.nav_images, R.id.nav_analyzer, R.id.nav_settings, R.id.nav_help),
+            binding.drawerLayout
+        )
         setupActionBarWithNavController(navController, appBarConfig)
         binding.navView.setupWithNavController(navController)
 

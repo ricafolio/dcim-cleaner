@@ -7,7 +7,7 @@
     <fragment
         android:id="@+id/nav_images"
         android:name="com.dcimcleaner.ui.images.ImagesFragment"
-        android:label="Image cleaner">
+        android:label="Image Cleaner">
         <argument android:name="load_month" android:defaultValue="@null"
             app:argType="string" app:nullable="true" />
         <argument android:name="load_day" android:defaultValue="@null"
@@ -18,5 +18,15 @@
         android:id="@+id/nav_analyzer"
         android:name="com.dcimcleaner.ui.analyzer.AnalyzerFragment"
         android:label="DCIM Analyzer" />
+
+    <fragment
+        android:id="@+id/nav_settings"
+        android:name="com.dcimcleaner.ui.settings.SettingsFragment"
+        android:label="Settings" />
+
+    <fragment
+        android:id="@+id/nav_help"
+        android:name="com.dcimcleaner.ui.help.HelpFragment"
+        android:label="Help &amp; About" />
 
 </navigation>
