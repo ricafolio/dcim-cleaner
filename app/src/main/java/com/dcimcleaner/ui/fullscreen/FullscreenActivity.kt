@@ -2,6 +2,7 @@ package com.dcimcleaner.ui.fullscreen
 
 import android.app.Activity
 import android.content.ContentValues
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -24,6 +25,8 @@ class FullscreenActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_URIS = "extra_uris"
         const val EXTRA_POSITION = "extra_position"
+        const val RESULT_TRASHED_URIS = "result_trashed_uris"
+        const val RESULT_TRASHED_SIZES = "result_trashed_sizes"
     }
 
     private lateinit var binding: ActivityFullscreenBinding
@@ -32,6 +35,10 @@ class FullscreenActivity : AppCompatActivity() {
     private lateinit var repo: PhotoRepository
     private var pendingTrashEntry: PhotoEntry? = null
 
+    // Track what was trashed so we can return it to the grid
+    private val trashedUris = mutableListOf<String>()
+    private val trashedSizes = mutableListOf<Float>()
+
     private val trashLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -39,11 +46,9 @@ class FullscreenActivity : AppCompatActivity() {
             pendingTrashEntry?.let { entry ->
                 lifecycleScope.launch {
                     try {
-                        val values = ContentValues().apply {
-                            put(MediaStore.Images.Media.IS_TRASHED, 1)
-                        }
+                        val values = ContentValues().apply { put(MediaStore.Images.Media.IS_TRASHED, 1) }
                         val rows = contentResolver.update(Uri.parse(entry.uri), values, null, null)
-                        if (rows > 0) removeCurrentPhoto()
+                        if (rows > 0) recordAndRemove(entry)
                     } catch (e: Exception) {
                         android.util.Log.e("TRASH", "Post-permission failed: ${e.message}")
                     }
@@ -85,8 +90,46 @@ class FullscreenActivity : AppCompatActivity() {
             photos.getOrNull(binding.viewPager.currentItem)?.let { trashCurrent(it) }
         }
 
-        binding.btnBack.setOnClickListener { finish() }
+        binding.btnBack.setOnClickListener { finishWithResult() }
+    }
 
+    private fun trashCurrent(entry: PhotoEntry) {
+        lifecycleScope.launch {
+            when (val result = repo.moveToTrash(entry)) {
+                is TrashResult.Success -> recordAndRemove(entry)
+                is TrashResult.NeedsIntent -> {
+                    pendingTrashEntry = entry
+                    trashLauncher.launch(IntentSenderRequest.Builder(result.intentSender).build())
+                }
+                is TrashResult.Failed -> android.util.Log.e("TRASH", "Failed to trash")
+            }
+        }
+    }
+
+    private fun recordAndRemove(entry: PhotoEntry) {
+        trashedUris.add(entry.uri)
+        trashedSizes.add(entry.sizeMb)
+        repo // deleteFromIndex happens in ImagesFragment via result
+        val pos = binding.viewPager.currentItem
+        if (pos < photos.size) {
+            photos.removeAt(pos)
+            adapter.updatePhotos(photos)
+            if (photos.isEmpty()) finishWithResult()
+            else updateInfo(photos.getOrNull(binding.viewPager.currentItem))
+        }
+    }
+
+    private fun finishWithResult() {
+        val data = Intent().apply {
+            putStringArrayListExtra(RESULT_TRASHED_URIS, ArrayList(trashedUris))
+            putExtra(RESULT_TRASHED_SIZES, trashedSizes.toFloatArray())
+        }
+        setResult(Activity.RESULT_OK, data)
+        finish()
+    }
+
+    override fun onBackPressed() {
+        finishWithResult()
     }
 
     private var touchStartY = 0f
@@ -102,41 +145,12 @@ class FullscreenActivity : AppCompatActivity() {
                 val deltaY = ev.y - touchStartY
                 val deltaX = kotlin.math.abs(ev.x - touchStartX)
                 if (deltaY > 200 && deltaX < deltaY * 0.5f) {
-                    if (android.os.Build.VERSION.SDK_INT >= 34) {
-                        overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0,
-                            com.dcimcleaner.R.anim.slide_down)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        overridePendingTransition(0, com.dcimcleaner.R.anim.slide_down)
-                    }
-                    finish()
+                    finishWithResult()
                     return true
                 }
             }
         }
         return super.dispatchTouchEvent(ev)
-    }
-    private fun trashCurrent(entry: PhotoEntry) {
-        lifecycleScope.launch {
-            when (val result = repo.moveToTrash(entry)) {
-                is TrashResult.Success -> removeCurrentPhoto()
-                is TrashResult.NeedsIntent -> {
-                    pendingTrashEntry = entry
-                    trashLauncher.launch(IntentSenderRequest.Builder(result.intentSender).build())
-                }
-                is TrashResult.Failed -> android.util.Log.e("TRASH", "Failed to trash")
-            }
-        }
-    }
-
-    private fun removeCurrentPhoto() {
-        val pos = binding.viewPager.currentItem
-        if (pos < photos.size) {
-            photos.removeAt(pos)
-            adapter.updatePhotos(photos)
-            if (photos.isEmpty()) finish()
-            else updateInfo(photos.getOrNull(binding.viewPager.currentItem))
-        }
     }
 
     private fun updateInfo(entry: PhotoEntry?) {
@@ -146,22 +160,15 @@ class FullscreenActivity : AppCompatActivity() {
         binding.tvFileName.text = entry.fileName.ifEmpty { "Unknown" }
         binding.tvDatetime.text = dateStr
         binding.tvSize.text = if (entry.sizeMb > 0) "${"%.2f".format(entry.sizeMb)} MB" else "Unknown"
-        if (entry.width > 0 && entry.height > 0) {
-            binding.tvDimensions.text = "${entry.width} × ${entry.height}"
-        } else {
-            binding.tvDimensions.text = ""
-        }
+        binding.tvDimensions.text = if (entry.width > 0 && entry.height > 0) "${entry.width} × ${entry.height}" else ""
     }
 
     private fun queryMediaStore(uriString: String): PhotoEntry {
         val uri = Uri.parse(uriString)
         val projection = arrayOf(
-            MediaStore.Images.Media.DISPLAY_NAME,
-            MediaStore.Images.Media.DATE_TAKEN,
-            MediaStore.Images.Media.SIZE,
-            MediaStore.Images.Media.WIDTH,
-            MediaStore.Images.Media.HEIGHT,
-            MediaStore.Images.Media.DATA
+            MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_TAKEN,
+            MediaStore.Images.Media.SIZE, MediaStore.Images.Media.WIDTH,
+            MediaStore.Images.Media.HEIGHT, MediaStore.Images.Media.DATA
         )
         return try {
             contentResolver.query(uri, projection, null, null, null)?.use { cursor ->

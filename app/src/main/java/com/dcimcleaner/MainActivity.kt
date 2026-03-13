@@ -20,6 +20,7 @@ import com.dcimcleaner.data.repository.PhotoRepository
 import com.dcimcleaner.databinding.ActivityMainBinding
 import com.dcimcleaner.worker.IndexWorker
 import kotlinx.coroutines.launch
+import androidx.core.os.bundleOf
 
 class MainActivity : AppCompatActivity() {
 
@@ -44,12 +45,46 @@ class MainActivity : AppCompatActivity() {
 
         val navController = findNavController(R.id.nav_host_fragment)
         appBarConfig = AppBarConfiguration(
-            setOf(R.id.nav_images, R.id.nav_analyzer, R.id.nav_settings, R.id.nav_help),
+            setOf(R.id.nav_home, R.id.nav_images, R.id.nav_analyzer, R.id.nav_settings, R.id.nav_help),
             binding.drawerLayout
         )
         setupActionBarWithNavController(navController, appBarConfig)
         binding.navView.setupWithNavController(navController)
-
+        binding.navView.setNavigationItemSelectedListener { item ->
+            binding.drawerLayout.closeDrawers()
+            val navController = findNavController(R.id.nav_host_fragment)
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    navController.navigate(R.id.nav_home,
+                        null,
+                        androidx.navigation.NavOptions.Builder()
+                            .setPopUpTo(R.id.nav_home, true)
+                            .setLaunchSingleTop(true)
+                            .build()
+                    )
+                    true
+                }
+                R.id.nav_images -> {
+                    val session = com.dcimcleaner.data.repository.SessionPrefs(this)
+                    val lastDate = session.lastVisitedDate
+                    val lastType = session.lastVisitedType
+                    val args = if (lastDate.isNotEmpty()) {
+                        if (lastType == "month") bundleOf("load_month" to lastDate)
+                        else bundleOf("load_day" to lastDate)
+                    } else null
+                    navController.navigate(R.id.nav_images, args,
+                        androidx.navigation.NavOptions.Builder()
+                            .setPopUpTo(R.id.nav_home, false)
+                            .setLaunchSingleTop(false)
+                            .build()
+                    )
+                    true
+                }
+                else -> androidx.navigation.ui.NavigationUI.onNavDestinationSelected(
+                    item, navController
+                )
+            }
+        }
         checkPermissionsAndIndex()
     }
 

@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.GridLayoutManager
 import com.dcimcleaner.IndexCompleteListener
 import com.dcimcleaner.R
@@ -34,13 +35,12 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         if (result.resultCode == Activity.RESULT_OK) {
             pendingTrashEntry?.let { entry ->
                 lifecycleScope.launch {
-                    val uri = Uri.parse(entry.uri)
                     val values = android.content.ContentValues().apply {
                         put(MediaStore.Images.Media.IS_TRASHED, 1)
                     }
                     try {
-                        val rows = requireContext().contentResolver.update(uri, values, null, null)
-                        if (rows > 0) vm.removeFromIndex(entry.uri)
+                        val rows = requireContext().contentResolver.update(Uri.parse(entry.uri), values, null, null)
+                        if (rows > 0) vm.recordTrashAndRemove(entry)
                     } catch (e: Exception) {
                         android.util.Log.e("TRASH", "Post-permission failed: ${e.message}")
                     }
@@ -48,6 +48,21 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             }
         }
         pendingTrashEntry = null
+    }
+
+    // Result from FullscreenActivity — it tells us which URIs were trashed
+    private val fullscreenLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val trashedUris = result.data?.getStringArrayListExtra(FullscreenActivity.RESULT_TRASHED_URIS)
+            val trashedSizes = result.data?.getFloatArrayExtra(FullscreenActivity.RESULT_TRASHED_SIZES)
+            trashedUris?.forEachIndexed { i, uri ->
+                val sizeMb = trashedSizes?.getOrNull(i) ?: 0f
+                vm.session.addTrashed(sizeMb)
+                vm.removeFromIndex(uri)
+            }
+        }
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -70,16 +85,14 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         binding.btnRandomMonth.setOnClickListener { vm.pickRandomMonth() }
         binding.btnRandomDay.setOnClickListener { vm.pickRandomDay() }
         binding.btnGridToggle.setOnClickListener { vm.toggleGrid() }
+        binding.btnHome.setOnClickListener { findNavController().navigate(R.id.nav_home) }
 
         binding.btnTrash.setOnCheckedChangeListener { _, isChecked ->
             vm.trashModeEnabled.value = isChecked
         }
 
-
         vm.trashModeEnabled.observe(viewLifecycleOwner) { enabled ->
-            if (binding.btnTrash.isChecked != enabled) {
-                binding.btnTrash.isChecked = enabled
-            }
+            if (binding.btnTrash.isChecked != enabled) binding.btnTrash.isChecked = enabled
         }
 
         vm.photos.observe(viewLifecycleOwner) { photos ->
@@ -90,7 +103,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
         vm.isCompactGrid.observe(viewLifecycleOwner) { compact ->
             updateGridLayout(compact)
-            binding.btnGridToggle.setImageResource(
+            binding.ivGridIcon.setImageResource(
                 if (compact) R.drawable.ic_grid_large else R.drawable.ic_grid_compact
             )
         }
@@ -99,9 +112,14 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             binding.tvDate.text = date
         }
 
-        // Navigate from Analyzer — load specific date
-        arguments?.getString("load_month")?.let { vm.loadByMonth(it) }
-        arguments?.getString("load_day")?.let { vm.loadByDay(it) }
+        // Handle arguments — from Analyzer or Home
+        if (vm.photos.value.isNullOrEmpty()) {
+            arguments?.getString("pick_random")?.let { type ->
+                if (type == "month") vm.pickRandomMonth() else vm.pickRandomDay()
+            }
+            arguments?.getString("load_month")?.let { vm.loadByMonth(it) }
+            arguments?.getString("load_day")?.let { vm.loadByDay(it) }
+        }
     }
 
     private fun updateGridLayout(isCompact: Boolean) {
@@ -125,7 +143,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             putStringArrayListExtra(FullscreenActivity.EXTRA_URIS, ArrayList(photos.map { it.uri }))
             putExtra(FullscreenActivity.EXTRA_POSITION, startPosition)
         }
-        startActivity(intent)
+        fullscreenLauncher.launch(intent)
     }
 
     override fun onIndexComplete() {}

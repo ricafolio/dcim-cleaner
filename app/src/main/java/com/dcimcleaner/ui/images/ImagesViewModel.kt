@@ -7,61 +7,75 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.dcimcleaner.data.model.PhotoEntry
 import com.dcimcleaner.data.repository.PhotoRepository
+import com.dcimcleaner.data.repository.SessionPrefs
 import com.dcimcleaner.data.repository.TrashResult
 import kotlinx.coroutines.launch
 
 class ImagesViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = PhotoRepository(app)
+    val session = SessionPrefs(app)
 
     val photos = MutableLiveData<List<PhotoEntry>>()
     val currentDate = MutableLiveData<String>()
-    val currentDateType = MutableLiveData<String>() // "month" or "day"
+    val currentDateType = MutableLiveData<String>()
     val isCompactGrid = MutableLiveData(false)
     val trashModeEnabled = MutableLiveData(false)
+    val hasPrevious = MutableLiveData(false)
 
-    fun pickRandomMonth() {
-        viewModelScope.launch {
-            val (key, list) = repo.getRandomMonthPhotos()
-            currentDate.value = key
-            currentDateType.value = "month"
-            photos.value = list
+    private fun setDate(type: String, key: String) {
+        val prev = currentDate.value
+        val prevType = currentDateType.value
+        if (!prev.isNullOrEmpty() && !prevType.isNullOrEmpty()) {
+            session.pushHistory(prevType, prev)
         }
+        currentDate.value = key
+        currentDateType.value = type
+        session.lastVisitedDate = key
+        session.lastVisitedType = type
+        hasPrevious.value = session.hasHistory()
     }
 
-    fun pickRandomDay() {
-        viewModelScope.launch {
-            val (key, list) = repo.getRandomDayPhotos()
-            currentDate.value = key
-            currentDateType.value = "day"
-            photos.value = list
-        }
+    fun pickRandomMonth() = viewModelScope.launch {
+        val (key, list) = repo.getRandomMonthPhotos()
+        if (key.isEmpty()) return@launch
+        setDate("month", key)
+        photos.value = list
     }
 
-    fun loadByMonth(month: String) {
-        viewModelScope.launch {
-            currentDate.value = month
-            currentDateType.value = "month"
-            photos.value = repo.getPhotosByMonth(month)
-        }
+    fun pickRandomDay() = viewModelScope.launch {
+        val (key, list) = repo.getRandomDayPhotos()
+        if (key.isEmpty()) return@launch
+        setDate("day", key)
+        photos.value = list
     }
 
-    fun loadByDay(day: String) {
-        viewModelScope.launch {
-            currentDate.value = day
-            currentDateType.value = "day"
-            photos.value = repo.getPhotosByDay(day)
-        }
+    fun loadByMonth(month: String) = viewModelScope.launch {
+        setDate("month", month)
+        photos.value = repo.getPhotosByMonth(month)
+    }
+
+    fun loadByDay(day: String) = viewModelScope.launch {
+        setDate("day", day)
+        photos.value = repo.getPhotosByDay(day)
+    }
+
+    fun goToPrevious() = viewModelScope.launch {
+        val (type, date) = session.popHistory() ?: return@launch
+        currentDate.value = date
+        currentDateType.value = type
+        photos.value = if (type == "month") repo.getPhotosByMonth(date) else repo.getPhotosByDay(date)
+        hasPrevious.value = session.hasHistory()
     }
 
     fun toggleGrid() { isCompactGrid.value = !(isCompactGrid.value ?: false) }
-    fun toggleTrashMode() { trashModeEnabled.value = !(trashModeEnabled.value ?: false) }
 
     fun trashPhoto(entry: PhotoEntry, onNeedsIntent: (IntentSender) -> Unit, onDone: () -> Unit) {
         viewModelScope.launch {
             when (val result = repo.moveToTrash(entry)) {
                 is TrashResult.Success -> {
-                    removeFromIndex(entry.uri)
+                    session.addTrashed(entry.sizeMb)
+                    removeFromList(entry.uri)
                     onDone()
                 }
                 is TrashResult.NeedsIntent -> onNeedsIntent(result.intentSender)
@@ -70,10 +84,21 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun removeFromIndex(uri: String) {
+    // Called after RecoverableSecurityException permission granted
+    fun recordTrashAndRemove(entry: PhotoEntry) {
         viewModelScope.launch {
-            repo.deleteFromIndex(uri)
-            photos.value = photos.value?.filter { it.uri != uri }
+            session.addTrashed(entry.sizeMb)
+            removeFromList(entry.uri)
         }
+    }
+
+    fun removeFromIndex(uri: String) = viewModelScope.launch {
+        repo.deleteFromIndex(uri)
+        photos.value = photos.value?.filter { it.uri != uri }
+    }
+
+    private suspend fun removeFromList(uri: String) {
+        repo.deleteFromIndex(uri)
+        photos.value = photos.value?.filter { it.uri != uri }
     }
 }

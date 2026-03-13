@@ -2,7 +2,12 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/nav_images">
+    app:startDestination="@id/nav_home">
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="com.dcimcleaner.ui.home.HomeFragment"
+        android:label="Home" />
 
     <fragment
         android:id="@+id/nav_images"
@@ -11,6 +16,8 @@
         <argument android:name="load_month" android:defaultValue="@null"
             app:argType="string" app:nullable="true" />
         <argument android:name="load_day" android:defaultValue="@null"
+            app:argType="string" app:nullable="true" />
+        <argument android:name="pick_random" android:defaultValue="@null"
             app:argType="string" app:nullable="true" />
     </fragment>
 

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -14,6 +15,7 @@
         android:gravity="center_vertical"
         android:elevation="2dp">
 
+        <!-- Date + stats -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -36,64 +38,113 @@
                 android:text="Click button below to get started" />
         </LinearLayout>
 
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+        <!-- Previous -->
+        <!-- <LinearLayout
+            android:id="@+id/btn_previous"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:orientation="vertical"
-            android:gravity="center_horizontal">
-
+            android:gravity="center"
+            android:padding="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:visibility="gone">
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_arrow_back"
+                android:contentDescription="Previous" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="View"
+                android:text="Prev"
                 android:textSize="9sp"
                 android:textColor="?attr/colorOnSurface" />
+        </LinearLayout> -->
 
-            <ImageButton
-                android:id="@+id/btn_grid_toggle"
-                android:layout_width="50dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_grid_compact"
-                android:contentDescription="Toggle grid" />
+        <!-- Grid -->
+        <LinearLayout
+            android:id="@+id/btn_grid_toggle"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless">
 
+            <ImageView
+                android:id="@+id/iv_grid_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:contentDescription="Toggle grid"
+                android:src="@drawable/ic_grid_compact" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Grid"
+                android:textSize="9sp"
+                android:textColor="?attr/colorOnSurface" />
         </LinearLayout>
 
+        <!-- Quick Trash -->
 
+        <!-- Home -->
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_width="66dp"
+            android:layout_height="56dp"
+            android:gravity="center"
             android:orientation="vertical"
-            android:gravity="center_horizontal">
+            android:padding="4dp">
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/btn_trash"
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:checked="false"
+                android:scaleX="0.5"
+                android:scaleY="0.5"
+                app:thumbTint="@color/switch_thumb_tint"
+                app:trackTint="@color/switch_track_tint" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Quick Trash"
-                android:textSize="9sp"
-                android:textColor="?attr/colorOnSurface" />
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="9sp" />
+        </LinearLayout>
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/btn_trash"
+        <LinearLayout
+            android:id="@+id/btn_home"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="32dp"
+                android:contentDescription="Home"
+                android:src="@drawable/ic_home" />
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:checked="false"
-                app:thumbTint="@color/switch_thumb_tint"
-                app:trackTint="@color/switch_track_tint"
-                xmlns:app="http://schemas.android.com/apk/res-auto" />
+                android:text="Home"
+                android:textSize="9sp"
+                android:textColor="?attr/colorOnSurface" />
         </LinearLayout>
 
     </LinearLayout>
 
-    <!-- Pick buttons -->
+    <!-- Random buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="8dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_random_month"
@@ -103,8 +154,7 @@
             android:layout_marginEnd="6dp"
             android:text="Random Month"
             app:icon="@drawable/ic_dice"
-            app:iconGravity="textStart"
-            xmlns:app="http://schemas.android.com/apk/res-auto"/>
+            app:iconGravity="textStart" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_random_day"
@@ -114,8 +164,7 @@
             android:layout_marginStart="6dp"
             android:text="Random Day"
             app:icon="@drawable/ic_dice"
-            app:iconGravity="textStart"
-            xmlns:app="http://schemas.android.com/apk/res-auto"/>
+            app:iconGravity="textStart" />
     </LinearLayout>
 
     <!-- Grid -->

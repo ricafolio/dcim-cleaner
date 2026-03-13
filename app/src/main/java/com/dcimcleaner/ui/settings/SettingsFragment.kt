@@ -76,15 +76,11 @@ class SettingsFragment : Fragment() {
     private fun setupReindex() {
         binding.btnReindex.setOnClickListener {
             lifecycleScope.launch {
+                // Clear old index so buildIndex runs fresh
                 repo.clearIndex()
             }
-            // Enqueue directly without going through MainActivity's progress bar
-            IndexWorker.enqueue(requireContext())
-            android.widget.Toast.makeText(
-                requireContext(),
-                "Re-indexing with updated folder settings…",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            // Trigger re-index via MainActivity
+            (activity as? MainActivity)?.launchIndexWorker()
         }
     }
 

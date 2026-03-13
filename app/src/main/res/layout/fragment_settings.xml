@@ -89,7 +89,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Toggle folders to exclude from indexing. Tap Re-index Now after making changes for them to take effect."
+            android:text="Toggle folders to exclude from indexing. Re-index after making changes."
             android:textSize="13sp"
             android:layout_marginBottom="12dp" />
 

@@ -185,12 +185,13 @@ class AnalyzerFragment : Fragment() {
     }
 
     private fun navigateToImages(type: String, date: String) {
-        val args = if (type == "month") {
-            bundleOf("load_month" to date)
-        } else {
-            bundleOf("load_day" to date)
-        }
-        findNavController().navigate(R.id.nav_images, args)
+        val args = if (type == "month") bundleOf("load_month" to date) else bundleOf("load_day" to date)
+        findNavController().navigate(R.id.nav_images, args,
+            androidx.navigation.NavOptions.Builder()
+                .setPopUpTo(R.id.nav_home, false)
+                .setLaunchSingleTop(true)
+                .build()
+        )
     }
 
     private fun updateBarChart(entries: List<BarEntry>, labels: List<String>) {
