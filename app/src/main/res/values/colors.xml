@@ -13,4 +13,10 @@
     <!-- Softer primary for text labels -->
     <color name="primary_soft">#FF9E77ED</color>
     <color name="primary_soft_dark">#FFBA9BF5</color>
+
+    <!-- Widget colors — light mode -->
+    <color name="widget_bg">#FFFFFFFF</color>
+    <color name="widget_text_primary">#FF000000</color>
+    <color name="widget_text_secondary">#FF888888</color>
+    <color name="widget_divider">#FFDDDDDD</color>
 </resources>

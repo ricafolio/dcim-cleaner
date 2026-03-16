@@ -52,7 +52,6 @@ class MainActivity : AppCompatActivity() {
         binding.navView.setupWithNavController(navController)
         binding.navView.setNavigationItemSelectedListener { item ->
             binding.drawerLayout.closeDrawers()
-            val navController = findNavController(R.id.nav_host_fragment)
             when (item.itemId) {
                 R.id.nav_home -> {
                     navController.navigate(R.id.nav_home,
@@ -85,6 +84,14 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+
+        if (intent?.action == "WIDGET_RANDOM_DAY") {
+            // Navigate to images with random day after index is ready
+            findNavController(R.id.nav_host_fragment).navigate(
+                R.id.nav_images, bundleOf("pick_random" to "day")
+            )
+        }
+
         checkPermissionsAndIndex()
     }
 
