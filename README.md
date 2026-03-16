@@ -28,7 +28,11 @@ Scrolling through thousands of photos to clean them up is hard. So instead, this
 - Re-index DCIM folder
 - Ignore specific subfolders (e.g. Screenshots)
 
-**🖼 Widget**
+**⬛ Widget (2x1) — "clean me up" widget**
+- Clickable widget that shows you random date every 6 hours.
+- Displays date, its size & number of photos you can clean up.
+
+**⬛ Widget (4x1) — "today & yesterday storage" widget**
 - Watch your storage with a widget that you can add in your home screen.
 - Displays your available storage space, updated every day.
 - Keeps track of your storage so you can compare how many space you've lost or gained from yesterday.
