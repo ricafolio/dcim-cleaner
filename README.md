@@ -1,14 +1,13 @@
 # DCIM Cleaner
+![Static Badge](https://img.shields.io/badge/Built_with_Claude-333333?style=for-the-badge)
+![Static Badge](https://img.shields.io/badge/—_vibe_coded_with_love_<3-ff0000?style=for-the-badge)
 
-**An Android app to help you clean up your camera roll.** Built with Claude.
-
-> This app takes you to a random date in your camera roll and lets you trash photos in one tap.
+**An Android app to help you clean up your camera roll.** This app takes you to a random date in your camera roll and lets you trash photos in one tap or two. Comes with widgets as well.
 
 [![App preview](https://i.imgur.com/iO7p6z6.jpeg)](https://i.imgur.com/iO7p6z6.jpeg)
+> Scrolling through thousands of photos to clean them up is hard. So instead, this app scans your camera roll by date — you pick a random month or day, see what's there, and decide what to keep.
 
 ## Features
-
-Scrolling through thousands of photos to clean them up is hard. So instead, this app scans your camera roll by date — you pick a random month or day, see what's there, and decide what to keep.
 
 **📊 DCIM Analyzer**
 - Breaks down your photos by Month, Year, and Day — showing file count and size per period. Columns are sortable. Tap any row to open that batch in the grid.
@@ -36,7 +35,8 @@ Scrolling through thousands of photos to clean them up is hard. So instead, this
 - Watch your storage with a widget that you can add in your home screen.
 - Displays your available storage space, updated every day.
 - Keeps track of your storage so you can compare how many space you've lost or gained from yesterday.
----
+
+[![Widget preview](https://i.imgur.com/7lHf8Fu.jpeg)](https://i.imgur.com/7lHf8Fu.jpeg)
 
 > [!WARNING]
 > ⚠️ **Personal use only.** This app was AI-generated and is not fully tested. No APK will be distributed — build it yourself via Android Studio.
