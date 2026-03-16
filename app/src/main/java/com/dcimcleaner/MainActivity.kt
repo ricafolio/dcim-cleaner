@@ -85,11 +85,24 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        if (intent?.action == "WIDGET_RANDOM_DAY") {
-            // Navigate to images with random day after index is ready
-            findNavController(R.id.nav_host_fragment).navigate(
-                R.id.nav_images, bundleOf("pick_random" to "day")
-            )
+        when (intent?.action) {
+            "WIDGET_RANDOM_DAY" -> {
+                findNavController(R.id.nav_host_fragment)
+                    .navigate(R.id.nav_images, bundleOf("pick_random" to "day"))
+            }
+            "WIDGET_CLEANUP_OPEN" -> {
+                val month = intent.getStringExtra("load_month")
+                val day = intent.getStringExtra("load_day")
+                val args = when {
+                    month != null -> bundleOf("load_month" to month)
+                    day != null   -> bundleOf("load_day" to day)
+                    else          -> null
+                }
+                if (args != null) {
+                    findNavController(R.id.nav_host_fragment)
+                        .navigate(R.id.nav_images, args)
+                }
+            }
         }
 
         checkPermissionsAndIndex()
