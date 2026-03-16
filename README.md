@@ -28,6 +28,10 @@ Scrolling through thousands of photos to clean them up is hard. So instead, this
 - Re-index DCIM folder
 - Ignore specific subfolders (e.g. Screenshots)
 
+**🖼 Widget**
+- Watch your storage with a widget that you can add in your home screen.
+- Displays your available storage space, updated every day.
+- Keeps track of your storage so you can compare how many space you've lost or gained from yesterday.
 ---
 
 > [!WARNING]
