@@ -21,6 +21,9 @@ import com.dcimcleaner.databinding.ActivityMainBinding
 import com.dcimcleaner.worker.IndexWorker
 import kotlinx.coroutines.launch
 import androidx.core.os.bundleOf
+import android.provider.MediaStore
+import android.provider.Settings
+import android.content.Intent
 
 class MainActivity : AppCompatActivity() {
 
@@ -117,8 +120,35 @@ class MainActivity : AppCompatActivity() {
         val allGranted = perms.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
-        if (allGranted) startIndexIfNeeded()
-        else permissionLauncher.launch(perms)
+        if (allGranted) {
+            checkManageMediaPermission()
+            startIndexIfNeeded()
+        } else {
+            permissionLauncher.launch(perms)
+        }
+    }
+
+    private fun checkManageMediaPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!MediaStore.canManageMedia(this)) {
+                // Send user to the special access settings page directly
+                val intent = Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA).apply {
+                    data = android.net.Uri.parse("package:$packageName")
+                }
+                manageMediaLauncher.launch(intent)
+            }
+        }
+    }
+
+    private val manageMediaLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        // User returned from settings — check if granted
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (MediaStore.canManageMedia(this)) {
+                android.util.Log.d("PERMISSION", "Manage media granted ✓")
+            }
+        }
     }
 
     private fun startIndexIfNeeded() {

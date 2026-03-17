@@ -44,15 +44,7 @@ class FullscreenActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             pendingTrashEntry?.let { entry ->
-                lifecycleScope.launch {
-                    try {
-                        val values = ContentValues().apply { put(MediaStore.Images.Media.IS_TRASHED, 1) }
-                        val rows = contentResolver.update(Uri.parse(entry.uri), values, null, null)
-                        if (rows > 0) recordAndRemove(entry)
-                    } catch (e: Exception) {
-                        android.util.Log.e("TRASH", "Post-permission failed: ${e.message}")
-                    }
-                }
+                recordAndRemove(entry)
             }
         }
         pendingTrashEntry = null

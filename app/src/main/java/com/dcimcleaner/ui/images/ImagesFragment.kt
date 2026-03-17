@@ -31,20 +31,10 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
     private val trashLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
-    ) { result ->
+                        ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             pendingTrashEntry?.let { entry ->
-                lifecycleScope.launch {
-                    val values = android.content.ContentValues().apply {
-                        put(MediaStore.Images.Media.IS_TRASHED, 1)
-                    }
-                    try {
-                        val rows = requireContext().contentResolver.update(Uri.parse(entry.uri), values, null, null)
-                        if (rows > 0) vm.recordTrashAndRemove(entry)
-                    } catch (e: Exception) {
-                        android.util.Log.e("TRASH", "Post-permission failed: ${e.message}")
-                    }
-                }
+                vm.recordTrashAndRemove(entry)
             }
         }
         pendingTrashEntry = null

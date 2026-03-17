@@ -3,8 +3,10 @@ package com.dcimcleaner.data.repository
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import com.dcimcleaner.data.db.AppDatabase
@@ -54,14 +56,18 @@ class PhotoRepository(private val context: Context) {
         val ignoredFolders = getIgnoredFolders()
 
         // Build selection: include DCIM path, exclude each ignored folder
-        val selectionParts = mutableListOf("${MediaStore.Images.Media.DATA} LIKE ?")
+        val selectionParts = mutableListOf(
+            "${MediaStore.Images.Media.DATA} LIKE ?",
+            "${MediaStore.Images.Media.IS_TRASHED} = 0"  // exclude trashed files
+        )
         val selectionArgsList = mutableListOf("$dcimPath%")
         ignoredFolders.forEach { folder ->
             selectionParts.add("${MediaStore.Images.Media.DATA} NOT LIKE ?")
             selectionArgsList.add("$dcimPath/$folder/%")
         }
 
-        val selection = selectionParts.joinToString(" AND ")
+        val selection = selectionParts.joinToString(" AND ") +
+                " AND ${MediaStore.Images.Media.IS_TRASHED} = 0"
         val selectionArgs = selectionArgsList.toTypedArray()
         val sortOrder = "${MediaStore.Images.Media.DATE_TAKEN} ASC"
 
@@ -157,29 +163,8 @@ class PhotoRepository(private val context: Context) {
     suspend fun getPhotosByDay(day: String) = photoDao.getPhotosByDay(day)
 
     suspend fun moveToTrash(entry: PhotoEntry): TrashResult = withContext(Dispatchers.IO) {
-        android.util.Log.d("TRASH", "Attempting trash for URI: ${entry.uri}")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val uri = Uri.parse(entry.uri)
-                val values = ContentValues().apply {
-                    put(MediaStore.Images.Media.IS_TRASHED, 1)
-                }
-                val rows = context.contentResolver.update(uri, values, null, null)
-                if (rows > 0) {
-                    android.util.Log.d("TRASH", "Trashed via IS_TRASHED flag ✓")
-                    TrashResult.Success
-                } else {
-                    TrashResult.Failed
-                }
-            } catch (e: android.app.RecoverableSecurityException) {
-                android.util.Log.d("TRASH", "RecoverableSecurityException — launching system dialog")
-                TrashResult.NeedsIntent(e.userAction.actionIntent.intentSender)
-            } catch (e: Exception) {
-                android.util.Log.e("TRASH", "moveToTrash error: ${e.message}")
-                TrashResult.Failed
-            }
-        } else {
-            try {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return@withContext try {
                 context.contentResolver.delete(Uri.parse(entry.uri), null, null)
                 TrashResult.Success
             } catch (e: android.app.RecoverableSecurityException) {
@@ -187,6 +172,24 @@ class PhotoRepository(private val context: Context) {
             } catch (e: Exception) {
                 TrashResult.Failed
             }
+        }
+
+        // API 30+ — always use createTrashRequest, most reliable on Samsung
+        return@withContext try {
+            val pendingIntent = MediaStore.createTrashRequest(
+                context.contentResolver,
+                listOf(Uri.parse(entry.uri)),
+                true
+            )
+            android.util.Log.d("TRASH", "createTrashRequest OK")
+            // to test during dev
+            // logTrashedFiles()
+            // Notify system to refresh media scanner
+            context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse(entry.uri)))
+            TrashResult.NeedsIntent(pendingIntent.intentSender)
+        } catch (e: Exception) {
+            android.util.Log.e("TRASH", "createTrashRequest failed: ${e.message}")
+            TrashResult.Failed
         }
     }
 
@@ -198,10 +201,33 @@ class PhotoRepository(private val context: Context) {
         } catch (e: Exception) { false }
     }
 
-    suspend fun deleteViaContentResolver(entry: PhotoEntry) = withContext(Dispatchers.IO) {
-        try { context.contentResolver.delete(Uri.parse(entry.uri), null, null) } catch (_: Exception) {}
-    }
-
     suspend fun deleteFromIndex(uri: String) = photoDao.deletePhoto(uri)
     suspend fun isIndexBuilt() = photoDao.getTotalCount() > 0
+
+    suspend fun logTrashedFiles() = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bundle = Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+            }
+            val cursor = context.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                arrayOf(
+                    MediaStore.Images.Media._ID,
+                    MediaStore.Images.Media.DISPLAY_NAME,
+                    MediaStore.Images.Media.IS_TRASHED,
+                    MediaStore.Images.Media.DATA
+                ),
+                bundle,
+                null
+            )
+            cursor?.use {
+                android.util.Log.d("TRASH_CHECK", "Total trashed files found: ${it.count}")
+                while (it.moveToNext()) {
+                    val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))
+                    val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA))
+                    android.util.Log.d("TRASH_CHECK", "Trashed: $name | path: $path")
+                }
+            } ?: android.util.Log.d("TRASH_CHECK", "Cursor was null")
+        }
+    }
 }
