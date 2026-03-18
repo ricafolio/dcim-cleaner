@@ -25,6 +25,8 @@ import com.dcimcleaner.data.repository.SessionPrefs
 import com.dcimcleaner.databinding.ActivityMainBinding
 import com.dcimcleaner.worker.IndexWorker
 import kotlinx.coroutines.launch
+import android.view.Menu
+import android.view.MenuItem
 
 class MainActivity : AppCompatActivity() {
 
@@ -154,6 +156,33 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu, menu)
+
+        // Hide home button when already on home screen
+        findNavController(R.id.nav_host_fragment).addOnDestinationChangedListener { _, destination, _ ->
+            menu.findItem(R.id.action_home)?.isVisible = destination.id != R.id.nav_home
+        }
+
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_home -> {
+                findNavController(R.id.nav_host_fragment).navigate(
+                    R.id.nav_home, null,
+                    androidx.navigation.NavOptions.Builder()
+                        .setPopUpTo(R.id.nav_home, true)
+                        .setLaunchSingleTop(true)
+                        .build()
+                )
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     override fun onSupportNavigateUp() =
