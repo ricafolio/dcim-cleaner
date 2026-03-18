@@ -1,13 +1,17 @@
 package com.dcimcleaner
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
+import android.provider.Settings
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -17,13 +21,10 @@ import androidx.navigation.ui.setupWithNavController
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dcimcleaner.data.repository.PhotoRepository
+import com.dcimcleaner.data.repository.SessionPrefs
 import com.dcimcleaner.databinding.ActivityMainBinding
 import com.dcimcleaner.worker.IndexWorker
 import kotlinx.coroutines.launch
-import androidx.core.os.bundleOf
-import android.provider.MediaStore
-import android.provider.Settings
-import android.content.Intent
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,8 +35,15 @@ class MainActivity : AppCompatActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { grants ->
-        if (grants.values.all { it }) startIndexIfNeeded()
+        if (grants.values.all { it }) {
+            checkManageMediaPermission()
+            startIndexIfNeeded()
+        }
     }
+
+    private val manageMediaLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,31 +51,30 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.appBarMain.toolbar)
-
         repo = PhotoRepository(this)
 
         val navController = findNavController(R.id.nav_host_fragment)
         appBarConfig = AppBarConfiguration(
-            setOf(R.id.nav_home, R.id.nav_images, R.id.nav_analyzer, R.id.nav_settings, R.id.nav_help),
+            setOf(R.id.nav_home, R.id.nav_images, R.id.nav_analyzer,
+                  R.id.nav_trash, R.id.nav_settings, R.id.nav_help),
             binding.drawerLayout
         )
         setupActionBarWithNavController(navController, appBarConfig)
         binding.navView.setupWithNavController(navController)
+
         binding.navView.setNavigationItemSelectedListener { item ->
             binding.drawerLayout.closeDrawers()
             when (item.itemId) {
                 R.id.nav_home -> {
-                    navController.navigate(R.id.nav_home,
-                        null,
+                    navController.navigate(R.id.nav_home, null,
                         androidx.navigation.NavOptions.Builder()
                             .setPopUpTo(R.id.nav_home, true)
                             .setLaunchSingleTop(true)
-                            .build()
-                    )
+                            .build())
                     true
                 }
                 R.id.nav_images -> {
-                    val session = com.dcimcleaner.data.repository.SessionPrefs(this)
+                    val session = SessionPrefs(this)
                     val lastDate = session.lastVisitedDate
                     val lastType = session.lastVisitedType
                     val args = if (lastDate.isNotEmpty()) {
@@ -78,33 +85,24 @@ class MainActivity : AppCompatActivity() {
                         androidx.navigation.NavOptions.Builder()
                             .setPopUpTo(R.id.nav_home, false)
                             .setLaunchSingleTop(false)
-                            .build()
-                    )
+                            .build())
                     true
                 }
-                else -> androidx.navigation.ui.NavigationUI.onNavDestinationSelected(
-                    item, navController
-                )
+                else -> androidx.navigation.ui.NavigationUI.onNavDestinationSelected(item, navController)
             }
         }
 
         when (intent?.action) {
-            "WIDGET_RANDOM_DAY" -> {
-                findNavController(R.id.nav_host_fragment)
-                    .navigate(R.id.nav_images, bundleOf("pick_random" to "day"))
-            }
+            "WIDGET_RANDOM_DAY" -> navController.navigate(R.id.nav_images, bundleOf("pick_random" to "day"))
             "WIDGET_CLEANUP_OPEN" -> {
                 val month = intent.getStringExtra("load_month")
                 val day = intent.getStringExtra("load_day")
                 val args = when {
                     month != null -> bundleOf("load_month" to month)
-                    day != null   -> bundleOf("load_day" to day)
-                    else          -> null
+                    day != null -> bundleOf("load_day" to day)
+                    else -> null
                 }
-                if (args != null) {
-                    findNavController(R.id.nav_host_fragment)
-                        .navigate(R.id.nav_images, args)
-                }
+                if (args != null) navController.navigate(R.id.nav_images, args)
             }
         }
 
@@ -112,65 +110,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissionsAndIndex() {
-        val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
-        } else {
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
+        else arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+
         val allGranted = perms.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
-        if (allGranted) {
-            checkManageMediaPermission()
-            startIndexIfNeeded()
-        } else {
-            permissionLauncher.launch(perms)
-        }
+        if (allGranted) { checkManageMediaPermission(); startIndexIfNeeded() }
+        else permissionLauncher.launch(perms)
     }
 
     private fun checkManageMediaPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (!MediaStore.canManageMedia(this)) {
-                // Send user to the special access settings page directly
-                val intent = Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA).apply {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !MediaStore.canManageMedia(this)) {
+            manageMediaLauncher.launch(
+                Intent(Settings.ACTION_REQUEST_MANAGE_MEDIA).apply {
                     data = android.net.Uri.parse("package:$packageName")
                 }
-                manageMediaLauncher.launch(intent)
-            }
-        }
-    }
-
-    private val manageMediaLauncher = registerForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-        // User returned from settings — check if granted
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (MediaStore.canManageMedia(this)) {
-                android.util.Log.d("PERMISSION", "Manage media granted ✓")
-            }
+            )
         }
     }
 
     private fun startIndexIfNeeded() {
-        lifecycleScope.launch {
-            if (!repo.isIndexBuilt()) launchIndexWorker()
-        }
+        lifecycleScope.launch { if (!repo.isIndexBuilt()) launchIndexWorker() }
     }
 
     fun launchIndexWorker() {
         val progressBar = binding.appBarMain.progressBar
         progressBar.visibility = View.VISIBLE
         progressBar.progress = 0
-
         IndexWorker.enqueue(this)
-
         WorkManager.getInstance(this)
             .getWorkInfosForUniqueWorkLiveData(IndexWorker.WORK_NAME)
             .observe(this) { infos ->
                 val info = infos?.firstOrNull() ?: return@observe
-                val progress = info.progress.getInt(IndexWorker.PROGRESS_KEY, 0)
-                progressBar.progress = progress
-
+                progressBar.progress = info.progress.getInt(IndexWorker.PROGRESS_KEY, 0)
                 if (info.state == WorkInfo.State.SUCCEEDED || info.state == WorkInfo.State.FAILED) {
                     progressBar.visibility = View.GONE
                     supportFragmentManager.fragments.forEach { frag ->

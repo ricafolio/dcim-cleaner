@@ -1,156 +1,188 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <ScrollView
+        android:id="@+id/scrollViewHome"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/ll_trash_container">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:gravity="center_horizontal">
+
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="24dp"
+                android:contentDescription="App Logo"
+                app:srcCompat="@drawable/icon_home" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:text="DCIM Cleaner"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pick a random date and start cleaning."
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginBottom="18dp" />
+
+            <!-- Stats card -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="26dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="18dp">
+
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+                        <TextView android:id="@+id/tv_total_saved"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="0 MB" android:textSize="18sp" android:textStyle="bold"
+                            android:textColor="?attr/colorPrimary" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="total freed" android:textSize="11sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+                    </LinearLayout>
+
+                    <View android:layout_width="1dp" android:layout_height="40dp"
+                        android:layout_marginStart="6dp" android:layout_marginEnd="6dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+                        <TextView android:id="@+id/tv_today_saved"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="0 MB" android:textColor="?attr/colorPrimary"
+                            android:textSize="18sp" android:textStyle="bold" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="freed today" android:textSize="11sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+                    </LinearLayout>
+
+                    <View android:layout_width="1dp" android:layout_height="40dp"
+                        android:layout_marginStart="6dp" android:layout_marginEnd="6dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+                        <TextView android:id="@+id/tv_trashed_count"
+                            android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="0" android:textSize="18sp" android:textStyle="bold"
+                            android:textColor="?attr/colorPrimary" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="trashed" android:textSize="11sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Start cleaning label -->
+            <TextView
+                android:id="@+id/start_cleaning_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:letterSpacing="0.1"
+                android:text="START CLEANING"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_random_month"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="🎲  Random Month"
+                android:textSize="15sp"
+                android:layout_marginBottom="6dp"
+                app:icon="@null" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_random_day"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="🎲  Random Day"
+                android:textSize="15sp"
+                android:layout_marginBottom="20dp"
+                app:icon="@null" />
+
+            <!-- Last visited -->
+            <TextView
+                android:id="@+id/tv_last_visited_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:text="CONTINUE WHERE YOU LEFT OFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:letterSpacing="0.1"
+                android:visibility="gone" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_last_visited"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="—"
+                android:visibility="gone"
+                android:layout_marginBottom="20dp"
+                app:icon="@null" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bottom Container for Trash info -->
     <LinearLayout
+        android:id="@+id/ll_trash_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="24dp"
-        android:gravity="center_horizontal">
-
-        <ImageView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="24dp"
-            android:contentDescription="App Logo"
-            app:srcCompat="@drawable/icon_home" />
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:text="DCIM Cleaner"
-            android:textSize="24sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pick a random date and start cleaning."
-            android:textSize="14sp"
-            android:textColor="?attr/colorOnSurfaceVariant"
-            android:layout_marginBottom="18dp" />
-
-        <!-- Stats card -->
-        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/btn_view_trash_label"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="26dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="18dp">
-
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:orientation="vertical" android:gravity="center">
-                    <TextView android:id="@+id/tv_total_saved"
-                        android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="0 MB" android:textSize="18sp" android:textStyle="bold"
-                        android:textColor="?attr/colorPrimary" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="total freed" android:textSize="11sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginEnd="6dp"
-                    android:background="?attr/colorOutlineVariant" />
-
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:orientation="vertical" android:gravity="center">
-
-                    <TextView
-                        android:id="@+id/tv_today_saved"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 MB"
-                        android:textColor="?attr/colorPrimary"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="freed today" android:textSize="11sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="1dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginEnd="6dp"
-                    android:background="?attr/colorOutlineVariant" />
-
-                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
-                    android:layout_weight="1" android:orientation="vertical" android:gravity="center">
-                    <TextView android:id="@+id/tv_trashed_count"
-                        android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="0" android:textSize="18sp" android:textStyle="bold"
-                        android:textColor="?attr/colorPrimary" />
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                        android:text="trashed" android:textSize="11sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-                </LinearLayout>
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Random buttons -->
-        <TextView
-            android:id="@+id/start_cleaning_label"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="6dp"
             android:letterSpacing="0.1"
-            android:text="START CLEANING"
-            android:textColor="?attr/colorPrimary"
+            android:text="REVIEW YOUR TRASH"
+            android:textAlignment="center"
+            android:textColor="#b9b9b9"
             android:textSize="11sp"
             android:textStyle="bold" />
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_random_month"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="🎲  Random Month"
-            android:textSize="15sp"
-            android:layout_marginBottom="6dp"
-            app:icon="@null" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_random_day"
+            android:id="@+id/btn_view_trash"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="🎲  Random Day"
-            android:textSize="15sp"
-            android:layout_marginBottom="28dp"
-            app:icon="@null" />
-
-        <!-- Last visited -->
-        <TextView
-            android:id="@+id/tv_last_visited_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:text="CONTINUE WHERE YOU LEFT OFF"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="?attr/colorPrimary"
-            android:letterSpacing="0.1"
-            android:visibility="gone" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_last_visited"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="—"
-            android:visibility="gone"
+            android:text="View Trash"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#531c1c"
             app:icon="@null" />
     </LinearLayout>
-</ScrollView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

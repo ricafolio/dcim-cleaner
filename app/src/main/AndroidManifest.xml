@@ -34,6 +34,11 @@
             android:exported="false"
             android:theme="@style/Theme.DCIMCleaner.Fullscreen" />
 
+        <activity
+            android:name=".ui.fullscreen.TrashFullscreenActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DCIMCleaner.Fullscreen" />
+
         <receiver android:name=".widget.StorageWidgetProvider"
             android:exported="true">
             <intent-filter>
