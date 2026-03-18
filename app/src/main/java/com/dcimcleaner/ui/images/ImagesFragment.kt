@@ -76,7 +76,6 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         binding.btnRandomMonth.setOnClickListener { vm.pickRandomMonth() }
         binding.btnRandomDay.setOnClickListener { vm.pickRandomDay() }
         binding.btnGridToggle.setOnClickListener { vm.toggleGrid() }
-        binding.btnHome.setOnClickListener { findNavController().navigate(R.id.nav_home) }
 
         binding.btnTrashContainer.setOnClickListener {
             binding.btnTrash.isChecked = !binding.btnTrash.isChecked

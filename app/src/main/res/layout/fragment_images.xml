@@ -116,29 +116,6 @@
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="9sp" />
         </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/btn_home"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:padding="4dp"
-            android:background="?attr/selectableItemBackgroundBorderless">
-
-            <ImageView
-                android:layout_width="22dp"
-                android:layout_height="32dp"
-                android:contentDescription="Home"
-                android:src="@drawable/ic_home" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Home"
-                android:textSize="9sp"
-                android:textColor="?attr/colorOnSurface" />
-        </LinearLayout>
-
     </LinearLayout>
 
     <!-- Random buttons -->
