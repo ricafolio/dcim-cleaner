@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.*
+import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
@@ -77,8 +78,17 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         binding.btnGridToggle.setOnClickListener { vm.toggleGrid() }
         binding.btnHome.setOnClickListener { findNavController().navigate(R.id.nav_home) }
 
+        binding.btnTrashContainer.setOnClickListener {
+            binding.btnTrash.isChecked = !binding.btnTrash.isChecked
+        }
+
         binding.btnTrash.setOnCheckedChangeListener { _, isChecked ->
-            vm.trashModeEnabled.value = isChecked
+            if (vm.trashModeEnabled.value != isChecked) {
+                vm.trashModeEnabled.value = isChecked
+                if (isChecked) {
+                    Toast.makeText(requireContext(), "Quick trash enabled: Tap a photo in grid to trash instantly", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
 
         vm.trashModeEnabled.observe(viewLifecycleOwner) { enabled ->
