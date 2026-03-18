@@ -86,22 +86,26 @@
         </LinearLayout>
 
         <!-- Quick Trash -->
-
-        <!-- Home -->
         <LinearLayout
+            android:id="@+id/btn_trash_container"
             android:layout_width="66dp"
             android:layout_height="56dp"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="4dp">
+            android:padding="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless">
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/btn_trash"
                 android:layout_width="match_parent"
-                android:layout_height="20dp"
+                android:layout_height="21dp"
                 android:checked="false"
                 android:scaleX="0.5"
                 android:scaleY="0.5"
+                android:clickable="false"
+                android:focusable="false"
                 app:thumbTint="@color/switch_thumb_tint"
                 app:trackTint="@color/switch_track_tint" />
 
