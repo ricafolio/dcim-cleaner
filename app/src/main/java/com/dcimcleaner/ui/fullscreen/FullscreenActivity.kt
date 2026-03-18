@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -88,10 +89,14 @@ class FullscreenActivity : AppCompatActivity() {
     private fun trashCurrent(entry: PhotoEntry) {
         lifecycleScope.launch {
             when (val result = repo.moveToTrash(entry)) {
-                is TrashResult.Success -> recordAndRemove(entry)
+                is TrashResult.Success -> {
+                    recordAndRemove(entry)
+                    Toast.makeText(this@FullscreenActivity, "Trashed: ${entry.fileName}", Toast.LENGTH_SHORT).show()
+                }
                 is TrashResult.NeedsIntent -> {
                     pendingTrashEntry = entry
                     trashLauncher.launch(IntentSenderRequest.Builder(result.intentSender).build())
+                    Toast.makeText(this@FullscreenActivity, "Trashed: ${entry.fileName}!", Toast.LENGTH_SHORT).show()
                 }
                 is TrashResult.Failed -> android.util.Log.e("TRASH", "Failed to trash")
             }
@@ -118,6 +123,11 @@ class FullscreenActivity : AppCompatActivity() {
         }
         setResult(Activity.RESULT_OK, data)
         finish()
+    }
+
+    override fun onSupportNavigateUp(): Boolean {
+        finishWithResult()
+        return true
     }
 
     override fun onBackPressed() {

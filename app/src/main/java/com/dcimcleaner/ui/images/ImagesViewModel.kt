@@ -2,6 +2,7 @@ package com.dcimcleaner.ui.images
 
 import android.app.Application
 import android.content.IntentSender
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
@@ -76,6 +77,7 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
                 is TrashResult.Success -> {
                     session.addTrashed(entry.sizeMb)
                     removeFromList(entry.uri)
+                    Toast.makeText(getApplication(), "Trashed: ${entry.fileName}", Toast.LENGTH_SHORT).show()
                     onDone()
                 }
                 is TrashResult.NeedsIntent -> onNeedsIntent(result.intentSender)
@@ -89,6 +91,7 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             session.addTrashed(entry.sizeMb)
             removeFromList(entry.uri)
+            Toast.makeText(getApplication(), "Trashed: ${entry.fileName}", Toast.LENGTH_SHORT).show()
         }
     }
 
