@@ -14,6 +14,10 @@
         <!-- Keep buttons deep violet -->
         <item name="materialButtonStyle">@style/Widget.DCIMCleaner.Button</item>
         <item name="materialButtonOutlinedStyle">@style/Widget.DCIMCleaner.Button.Outlined</item>
+
+        <!-- Fonts -->
+        <item name="android:fontFamily">@font/google_sans</item>
+        <item name="fontFamily">@font/google_sans</item>
     </style>
 
     <style name="Widget.DCIMCleaner.Button" parent="Widget.Material3.Button">
