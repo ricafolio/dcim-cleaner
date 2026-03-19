@@ -19,15 +19,17 @@ class TrashFullscreenActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_URIS = "extra_uris"
+        const val EXTRA_PATHS = "extra_paths"  // file paths parallel to URIs
         const val EXTRA_POSITION = "extra_position"
-        const val RESULT_RESTORED_URIS = "result_restored_uris"
+        const val RESULT_RESTORED_PATHS = "result_restored_paths"  // pass back paths, not URIs
     }
 
     private lateinit var binding: ActivityTrashFullscreenBinding
     private var uris = mutableListOf<String>()
+    private var paths = mutableListOf<String>()  // parallel list of file paths
     private lateinit var adapter: TrashFullscreenAdapter
     private var pendingDeleteUri: String? = null
-    private val restoredUris = mutableListOf<String>()
+    private val restoredPaths = mutableListOf<String>()  // collect paths of restored photos
 
     private val deleteLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -44,8 +46,9 @@ class TrashFullscreenActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             Toast.makeText(this, "Photo restored successfully", Toast.LENGTH_SHORT).show()
-            val currentUri = uris.getOrNull(binding.viewPager.currentItem)
-            if (currentUri != null) restoredUris.add(currentUri)
+            val pos = binding.viewPager.currentItem
+            val path = paths.getOrNull(pos)
+            if (!path.isNullOrEmpty()) restoredPaths.add(path)
             removeCurrentAndAdvance()
         }
     }
@@ -56,6 +59,8 @@ class TrashFullscreenActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         uris = intent.getStringArrayListExtra(EXTRA_URIS)?.toMutableList() ?: return
+        paths = intent.getStringArrayListExtra(EXTRA_PATHS)?.toMutableList()
+            ?: MutableList(uris.size) { "" }
         val startPos = intent.getIntExtra(EXTRA_POSITION, 0)
 
         adapter = TrashFullscreenAdapter()
@@ -85,7 +90,7 @@ class TrashFullscreenActivity : AppCompatActivity() {
 
     private fun finishWithResult() {
         val data = Intent().apply {
-            putStringArrayListExtra(RESULT_RESTORED_URIS, ArrayList(restoredUris))
+            putStringArrayListExtra(RESULT_RESTORED_PATHS, ArrayList(restoredPaths))
         }
         setResult(Activity.RESULT_OK, data)
         finish()
@@ -131,6 +136,7 @@ class TrashFullscreenActivity : AppCompatActivity() {
         val pos = binding.viewPager.currentItem
         if (pos < uris.size) {
             uris.removeAt(pos)
+            if (pos < paths.size) paths.removeAt(pos)
             adapter.submitList(uris.toList())
             if (uris.isEmpty()) finishWithResult()
             else updateInfo()
@@ -147,9 +153,7 @@ class TrashFullscreenActivity : AppCompatActivity() {
 
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
         when (ev.action) {
-            android.view.MotionEvent.ACTION_DOWN -> {
-                touchStartY = ev.y; touchStartX = ev.x
-            }
+            android.view.MotionEvent.ACTION_DOWN -> { touchStartY = ev.y; touchStartX = ev.x }
             android.view.MotionEvent.ACTION_UP -> {
                 val deltaY = ev.y - touchStartY
                 val deltaX = kotlin.math.abs(ev.x - touchStartX)

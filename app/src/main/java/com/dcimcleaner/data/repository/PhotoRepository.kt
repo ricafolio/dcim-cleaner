@@ -55,10 +55,9 @@ class PhotoRepository(private val context: Context) {
         val dcimPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).absolutePath
         val ignoredFolders = getIgnoredFolders()
 
-        // Build selection: include DCIM path, exclude each ignored folder
         val selectionParts = mutableListOf(
             "${MediaStore.Images.Media.DATA} LIKE ?",
-            "${MediaStore.Images.Media.IS_TRASHED} = 0"  // exclude trashed files
+            "${MediaStore.Images.Media.IS_TRASHED} = 0"
         )
         val selectionArgsList = mutableListOf("$dcimPath%")
         ignoredFolders.forEach { folder ->
@@ -78,7 +77,6 @@ class PhotoRepository(private val context: Context) {
         val total = cursor.count
         val dfMonth = SimpleDateFormat("yyyy-MM", Locale.US)
         val dfDay = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-
         val batch = mutableListOf<PhotoEntry>()
         var processed = 0
 
@@ -107,10 +105,7 @@ class PhotoRepository(private val context: Context) {
 
             batch.add(PhotoEntry(contentUri, name, path, dateTaken, monthKey, dayKey, sizeMb, w, h))
 
-            if (batch.size >= 500) {
-                photoDao.insertPhotos(batch)
-                batch.clear()
-            }
+            if (batch.size >= 500) { photoDao.insertPhotos(batch); batch.clear() }
 
             processed++
             if (processed % 200 == 0 || processed == total) {
@@ -126,25 +121,75 @@ class PhotoRepository(private val context: Context) {
 
     private suspend fun buildStats() {
         val monthKeys = photoDao.getAllMonthKeys()
-        val monthStats = monthKeys.map { key ->
+        statsDao.insertMonthStats(monthKeys.map { key ->
             val photos = photoDao.getPhotosByMonth(key)
             MonthStat(key, photos.size, photos.sumOf { it.sizeMb.toDouble() }.toFloat())
-        }
-        statsDao.insertMonthStats(monthStats)
-
+        })
         val dayKeys = photoDao.getAllDayKeys()
-        val dayStats = dayKeys.mapNotNull { key ->
+        statsDao.insertDayStats(dayKeys.mapNotNull { key ->
             val photos = photoDao.getPhotosByDay(key)
             if (photos.size >= 50) DayStat(key, photos.size, photos.sumOf { it.sizeMb.toDouble() }.toFloat())
             else null
-        }
-        statsDao.insertDayStats(dayStats)
+        })
     }
 
     suspend fun clearIndex() = withContext(Dispatchers.IO) {
-        photoDao.clearAll()
-        statsDao.clearMonthStats()
-        statsDao.clearDayStats()
+        photoDao.clearAll(); statsDao.clearMonthStats(); statsDao.clearDayStats()
+    }
+
+    // Re-index a restored photo by its FILE PATH — safe because path survives media ID reassignment
+    suspend fun reIndexByPath(filePath: String) = withContext(Dispatchers.IO) {
+        if (filePath.isEmpty()) return@withContext
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.DATA,
+            MediaStore.Images.Media.DATE_TAKEN,
+            MediaStore.Images.Media.SIZE,
+            MediaStore.Images.Media.WIDTH,
+            MediaStore.Images.Media.HEIGHT
+        )
+        // Strip the .trashed-XXXXXXXX- prefix to get the original path
+        // e.g. /DCIM/Camera/.trashed-1234-IMG.jpg -> /DCIM/Camera/IMG.jpg
+        val cleanPath = filePath.replace(Regex("/\\.trashed-\\d+-"), "/")
+
+        // Query by DATA path — works even after restore assigns new media ID
+        val selection = "${MediaStore.Images.Media.DATA} = ? AND ${MediaStore.Images.Media.IS_TRASHED} = 0"
+        val selectionArgs = arrayOf(cleanPath)
+
+        try {
+            context.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection, selection, selectionArgs, null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                    val name = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)) ?: ""
+                    val path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)) ?: ""
+                    val dateTaken = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN))
+                        .takeIf { it > 0 } ?: System.currentTimeMillis()
+                    val sizeBytes = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE))
+                    val w = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH))
+                    val h = cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT))
+
+                    val contentUri = ContentUris.withAppendedId(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
+                    ).toString()
+                    val dfMonth = SimpleDateFormat("yyyy-MM", Locale.US)
+                    val dfDay = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                    val cal = Calendar.getInstance().apply { timeInMillis = dateTaken }
+
+                    val entry = PhotoEntry(contentUri, name, path, dateTaken,
+                        dfMonth.format(cal.time), dfDay.format(cal.time), sizeBytes / 1_048_576f, w, h)
+                    photoDao.insertPhotos(listOf(entry))
+                    android.util.Log.d("RESTORE", "Re-indexed by path: $name")
+                } else {
+                    android.util.Log.w("RESTORE", "Not found by path: $cleanPath")
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("RESTORE", "reIndexByPath failed: ${e.message}")
+        }
     }
 
     suspend fun getRandomMonthPhotos(): Pair<String, List<PhotoEntry>> {
@@ -169,35 +214,22 @@ class PhotoRepository(private val context: Context) {
                 TrashResult.Success
             } catch (e: android.app.RecoverableSecurityException) {
                 TrashResult.NeedsIntent(e.userAction.actionIntent.intentSender)
-            } catch (e: Exception) {
-                TrashResult.Failed
-            }
+            } catch (e: Exception) { TrashResult.Failed }
         }
-
-        // API 30+ — always use createTrashRequest, most reliable on Samsung
         return@withContext try {
             val pendingIntent = MediaStore.createTrashRequest(
-                context.contentResolver,
-                listOf(Uri.parse(entry.uri)),
-                true
+                context.contentResolver, listOf(Uri.parse(entry.uri)), true
             )
-            android.util.Log.d("TRASH", "createTrashRequest OK")
-            // to test during dev
-            // logTrashedFiles()
-            // Notify system to refresh media scanner
+            @Suppress("DEPRECATION")
             context.sendBroadcast(Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse(entry.uri)))
             TrashResult.NeedsIntent(pendingIntent.intentSender)
-        } catch (e: Exception) {
-            android.util.Log.e("TRASH", "createTrashRequest failed: ${e.message}")
-            TrashResult.Failed
-        }
+        } catch (e: Exception) { TrashResult.Failed }
     }
 
     suspend fun retryTrashAfterPermission(uri: String): Boolean = withContext(Dispatchers.IO) {
         return@withContext try {
             val values = ContentValues().apply { put(MediaStore.Images.Media.IS_TRASHED, 1) }
-            val rows = context.contentResolver.update(Uri.parse(uri), values, null, null)
-            rows > 0
+            context.contentResolver.update(Uri.parse(uri), values, null, null) > 0
         } catch (e: Exception) { false }
     }
 
@@ -206,28 +238,19 @@ class PhotoRepository(private val context: Context) {
 
     suspend fun logTrashedFiles() = withContext(Dispatchers.IO) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bundle = Bundle().apply {
-                putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
-            }
-            val cursor = context.contentResolver.query(
+            val bundle = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY) }
+            context.contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                arrayOf(
-                    MediaStore.Images.Media._ID,
-                    MediaStore.Images.Media.DISPLAY_NAME,
-                    MediaStore.Images.Media.IS_TRASHED,
-                    MediaStore.Images.Media.DATA
-                ),
-                bundle,
-                null
-            )
-            cursor?.use {
-                android.util.Log.d("TRASH_CHECK", "Total trashed files found: ${it.count}")
-                while (it.moveToNext()) {
-                    val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))
-                    val path = it.getString(it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA))
-                    android.util.Log.d("TRASH_CHECK", "Trashed: $name | path: $path")
+                arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DISPLAY_NAME,
+                    MediaStore.Images.Media.IS_TRASHED, MediaStore.Images.Media.DATA),
+                bundle, null
+            )?.use { cursor ->
+                android.util.Log.d("TRASH_CHECK", "Total trashed: ${cursor.count}")
+                while (cursor.moveToNext()) {
+                    android.util.Log.d("TRASH_CHECK",
+                        "Trashed: ${cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))}")
                 }
-            } ?: android.util.Log.d("TRASH_CHECK", "Cursor was null")
+            }
         }
     }
 }

@@ -19,6 +19,7 @@ import com.dcimcleaner.R
 import com.dcimcleaner.data.model.PhotoEntry
 import com.dcimcleaner.databinding.FragmentImagesBinding
 import com.dcimcleaner.ui.fullscreen.FullscreenActivity
+import com.dcimcleaner.ui.fullscreen.TrashFullscreenActivity
 import kotlinx.coroutines.launch
 
 class ImagesFragment : Fragment(), IndexCompleteListener {
@@ -28,8 +29,8 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     private val vm: ImagesViewModel by viewModels()
     private lateinit var adapter: PhotoGridAdapter
     private var gridToast: Toast? = null
-
     private var pendingTrashEntry: PhotoEntry? = null
+    private var gridToggleInitialized = false
 
     private val trashLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -47,9 +48,14 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             val trashedUris = result.data?.getStringArrayListExtra(FullscreenActivity.RESULT_TRASHED_URIS)
             val trashedSizes = result.data?.getFloatArrayExtra(FullscreenActivity.RESULT_TRASHED_SIZES)
             trashedUris?.forEachIndexed { i, uri ->
-                val sizeMb = trashedSizes?.getOrNull(i) ?: 0f
-                vm.session.addTrashed(sizeMb)
+                vm.session.addTrashed(trashedSizes?.getOrNull(i) ?: 0f)
                 vm.removeFromIndex(uri)
+            }
+
+            // Restored paths from TrashFullscreenActivity — re-index by path then reload grid
+            val restoredPaths = result.data?.getStringArrayListExtra(TrashFullscreenActivity.RESULT_RESTORED_PATHS)
+            if (!restoredPaths.isNullOrEmpty()) {
+                vm.reloadAfterRestore(restoredPaths)
             }
         }
     }
@@ -66,7 +72,6 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
                 else openFullscreen(pos)
             },
             onPhotoLongClick = { entry ->
-                // Show toast then trash
                 Toast.makeText(requireContext(), "Moving to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
                 handleTrash(entry)
             }
@@ -77,10 +82,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
         binding.btnRandomMonth.setOnClickListener { vm.pickRandomMonth() }
         binding.btnRandomDay.setOnClickListener { vm.pickRandomDay() }
-
-        binding.btnGridToggle.setOnClickListener {
-            vm.toggleGrid()
-        }
+        binding.btnGridToggle.setOnClickListener { vm.toggleGrid() }
 
         binding.btnTrashContainer.setOnClickListener {
             binding.btnTrash.isChecked = !binding.btnTrash.isChecked
@@ -89,9 +91,8 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         binding.btnTrash.setOnCheckedChangeListener { _, isChecked ->
             if (vm.trashModeEnabled.value != isChecked) {
                 vm.trashModeEnabled.value = isChecked
-                if (isChecked) {
-                    Toast.makeText(requireContext(), "Quick trash enabled — tap a photo to trash instantly", Toast.LENGTH_SHORT).show()
-                }
+                if (isChecked) Toast.makeText(requireContext(),
+                    "Quick trash enabled — tap a photo to trash instantly", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -112,15 +113,16 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             binding.ivGridIcon.setImageResource(
                 if (compact) R.drawable.ic_grid_large else R.drawable.ic_grid_compact
             )
-            val label = if (compact) "5-column grid" else "3-column grid"
-            gridToast?.cancel()
-            gridToast = Toast.makeText(requireContext(), label, Toast.LENGTH_SHORT)
-            gridToast?.show()
+            if (gridToggleInitialized) {
+                val label = if (compact) "5-column grid" else "3-column grid"
+                gridToast?.cancel()
+                gridToast = Toast.makeText(requireContext(), label, Toast.LENGTH_SHORT)
+                gridToast?.show()
+            }
+            gridToggleInitialized = true
         }
 
-        vm.currentDate.observe(viewLifecycleOwner) { date ->
-            binding.tvDate.text = date
-        }
+        vm.currentDate.observe(viewLifecycleOwner) { date -> binding.tvDate.text = date }
 
         if (vm.photos.value.isNullOrEmpty()) {
             arguments?.getString("pick_random")?.let { type ->
@@ -136,8 +138,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     }
 
     private fun handleTrash(entry: PhotoEntry) {
-        vm.trashPhoto(
-            entry,
+        vm.trashPhoto(entry,
             onNeedsIntent = { intentSender ->
                 pendingTrashEntry = entry
                 trashLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
@@ -157,10 +158,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
     override fun onResume() {
         super.onResume()
-        // Reload grid in case photos were restored from trash while we were away
-        if (!vm.photos.value.isNullOrEmpty()) {
-            vm.reloadCurrentDate()
-        }
+        if (!vm.photos.value.isNullOrEmpty()) vm.reloadCurrentDate()
     }
 
     override fun onIndexComplete() {}

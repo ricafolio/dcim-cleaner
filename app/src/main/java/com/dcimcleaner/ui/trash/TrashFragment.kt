@@ -39,11 +39,9 @@ class TrashFragment : Fragment() {
         }
     }
 
-    // Use result launcher so we know when fullscreen closes (restore/delete happened)
     private val fullscreenLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { _ ->
-        // Always reload after returning from fullscreen — delete or restore may have happened
         loadPhotos()
     }
 
@@ -116,9 +114,12 @@ class TrashFragment : Fragment() {
     }
 
     private fun openFullscreen(startPosition: Int) {
+        // Pass both URIs and file paths — paths survive media ID reassignment after restore
         val uris = ArrayList(photos.map { it.uri.toString() })
+        val paths = ArrayList(photos.map { it.filePath })
         val intent = Intent(requireContext(), TrashFullscreenActivity::class.java).apply {
             putStringArrayListExtra(TrashFullscreenActivity.EXTRA_URIS, uris)
+            putStringArrayListExtra(TrashFullscreenActivity.EXTRA_PATHS, paths)
             putExtra(TrashFullscreenActivity.EXTRA_POSITION, startPosition)
         }
         fullscreenLauncher.launch(intent)
