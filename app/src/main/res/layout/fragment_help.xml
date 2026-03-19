@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -19,11 +20,13 @@
             android:paddingTop="12dp"
             android:paddingBottom="24dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📷"
-                android:textSize="48sp" />
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="24dp"
+                android:contentDescription="App Logo"
+                app:srcCompat="@drawable/icon_home" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -66,7 +69,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="14sp"
                     android:lineSpacingMultiplier="1.4"
-                    android:text="DCIM Cleaner helps you take control of your camera folder. If you have thousands of photos piling up, this app makes it easy to browse, explore, and clean them up — without the overwhelm of scrolling through one giant gallery." />
+                    android:text="Scrolling through thousands of photos is exhausting. DCIM Cleaner helps you reclaim your storage by scanning your camera roll by date. Pick a random month or day, see what's there, and decide what to keep—making the cleanup process a surprise rather than a chore." />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -91,56 +94,40 @@
                     android:layout_marginBottom="12dp" />
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="📂  First Launch" android:textStyle="bold" android:textSize="14sp" />
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="The app scans your DCIM folder and builds an index of all your photos. A progress bar in the header shows the scan progress. This only happens once."
-                    android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="14dp" android:layout_marginTop="4dp"/>
-
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="🎲  Image Cleaner" android:textStyle="bold" android:textSize="14sp" />
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Tap Random Month or Random Day to load a surprise batch of photos. Browse them in the grid, tap to view full screen, and swipe between photos. Enable Quick Trash to instantly move photos to trash by tapping them."
-                    android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="14dp" android:layout_marginTop="4dp"/>
-
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="📊  DCIM Analyzer" android:textStyle="bold" android:textSize="14sp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="View your photo data broken down by Month, Year, or Day. Tap any column header to sort. Tap any row to jump directly to those photos in the grid."
+                    android:text="Break down photos by Year, Month, or Day. View file counts and total size per period. Tap any row to open that batch in the grid, or tap headers to sort data."
+                    android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="14dp" android:layout_marginTop="4dp"/>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="🎲  Random Picker" android:textStyle="bold" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Feeling overwhelmed? Let the app choose for you. Load a random batch of photos from a surprise date to start cleaning instantly."
+                    android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="14dp" android:layout_marginTop="4dp"/>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="⚡  Quick Trash &amp; Navigation" android:textStyle="bold" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Enable Quick Trash to delete with one tap, or long-press in the grid. In full-screen, tap the left/right corners to navigate faster than swiping. Swipe down to dismiss."
+                    android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="14dp" android:layout_marginTop="4dp"/>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="🖼  Grid Features" android:textStyle="bold" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Switch between 3 or 5 column layouts. Each thumbnail displays its file size so you know exactly how much space you are saving."
+                    android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="14dp" android:layout_marginTop="4dp"/>
+
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="⬛  Smart Widgets" android:textStyle="bold" android:textSize="14sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Add 'Clean Me Up' (2x1) for a random date suggestion every 6 hours, or 'Storage Tracker' (4x1) to monitor space gains and losses compared to yesterday."
                     android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginBottom="14dp" android:layout_marginTop="4dp"/>
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="⚙️  Settings" android:textStyle="bold" android:textSize="14sp" />
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="Ignore specific DCIM subfolders (like Screenshots) so they don't appear in your index. Use Re-index to refresh after taking new photos or changing folder settings."
+                    android:text="Exclude subfolders like Screenshots from your index. Use Re-index to refresh the app after taking new photos or changing folder settings."
                     android:textSize="13sp" android:lineSpacingMultiplier="1.4" android:layout_marginTop="4dp"/>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Trash note -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🗑  ABOUT TRASH"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:textColor="?attr/colorPrimary"
-                    android:letterSpacing="0.1"
-                    android:layout_marginBottom="8dp" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:lineSpacingMultiplier="1.4"
-                    android:text="This app only moves photos to your device's trash — it never permanently deletes anything. You can restore trashed photos from your phone's Gallery app at any time.\n\nOn Android 10 and below, deletion is permanent since the system trash feature is not available." />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
