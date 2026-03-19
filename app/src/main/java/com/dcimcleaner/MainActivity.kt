@@ -38,6 +38,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfig: AppBarConfiguration
     private lateinit var repo: PhotoRepository
     private var trashBadgeView: TextView? = null
+    private var currentDestinationId: Int = 0
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -70,8 +71,9 @@ class MainActivity : AppCompatActivity() {
 
         supportActionBar?.setDisplayShowTitleEnabled(false)
         val toolbarTitle = binding.appBarMain.toolbar.findViewById<TextView>(R.id.toolbar_title)
-        findNavController(R.id.nav_host_fragment).addOnDestinationChangedListener { _, destination, _ ->
+        navController.addOnDestinationChangedListener { _, destination, _ ->
             toolbarTitle.text = destination.label
+            currentDestinationId = destination.id
         }
 
         binding.navView.setupWithNavController(navController)
@@ -133,7 +135,6 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val count = withContext(Dispatchers.IO) { TrashRepository(this@MainActivity).getTrashedCount() }
 
-            // Toolbar badge
             trashBadgeView?.let { badge ->
                 if (count > 0) {
                     badge.visibility = View.VISIBLE
@@ -143,7 +144,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // Sidebar nav badge via actionLayout
             val trashItem = binding.navView.menu.findItem(R.id.nav_trash)
             val actionView = trashItem?.actionView
             val navBadge = actionView?.findViewById<TextView>(R.id.tv_nav_trash_badge)
@@ -159,7 +159,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.toolbar_menu, menu)
 
-        // Wire up the custom trash action view badge
         val trashItem = menu.findItem(R.id.action_trash)
         val actionView = trashItem?.actionView
         trashBadgeView = actionView?.findViewById(R.id.tv_trash_badge)
@@ -220,12 +219,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun launchIndexWorker() {
+        // Show progress bar only when NOT on Settings page (Settings has its own in-card progress)
         val progressBar = binding.appBarMain.progressBar
-        progressBar.visibility = View.VISIBLE
-        progressBar.progress = 0
+        if (currentDestinationId != R.id.nav_settings) {
+            progressBar.visibility = View.VISIBLE
+            progressBar.progress = 0
+        }
 
+        // Spinner in toolbar title always shows during indexing
         val toolbarSpinner = binding.appBarMain.toolbar.findViewById<View>(R.id.toolbar_spinner)
         toolbarSpinner?.visibility = View.VISIBLE
+        binding.appBarMain.toolbar.findViewById<android.view.View>(R.id.toolbar_spinner_label)?.visibility = android.view.View.VISIBLE
 
         IndexWorker.enqueue(this)
         WorkManager.getInstance(this)
@@ -236,11 +240,33 @@ class MainActivity : AppCompatActivity() {
                 if (info.state == WorkInfo.State.SUCCEEDED || info.state == WorkInfo.State.FAILED) {
                     progressBar.visibility = View.GONE
                     toolbarSpinner?.visibility = View.GONE
+                    binding.appBarMain.toolbar.findViewById<android.view.View>(R.id.toolbar_spinner_label)?.visibility = android.view.View.GONE
                     supportFragmentManager.fragments.forEach { frag ->
                         frag.childFragmentManager.fragments.forEach { child ->
                             if (child is IndexCompleteListener) child.onIndexComplete()
                         }
                     }
+                }
+            }
+    }
+
+    // Called by SettingsFragment to show toolbar spinner without the header progress bar
+    fun showToolbarSpinner() {
+        val toolbarSpinner = binding.appBarMain.toolbar.findViewById<View>(R.id.toolbar_spinner)
+        toolbarSpinner?.visibility = View.VISIBLE
+        binding.appBarMain.toolbar.findViewById<android.view.View>(R.id.toolbar_spinner_label)?.visibility = android.view.View.VISIBLE
+        observeIndexSpinner()
+    }
+
+    private fun observeIndexSpinner() {
+        val toolbarSpinner = binding.appBarMain.toolbar.findViewById<View>(R.id.toolbar_spinner)
+        WorkManager.getInstance(this)
+            .getWorkInfosForUniqueWorkLiveData(IndexWorker.WORK_NAME)
+            .observe(this) { infos ->
+                val info = infos?.firstOrNull() ?: return@observe
+                if (info.state == WorkInfo.State.SUCCEEDED || info.state == WorkInfo.State.FAILED) {
+                    toolbarSpinner?.visibility = View.GONE
+                    binding.appBarMain.toolbar.findViewById<android.view.View>(R.id.toolbar_spinner_label)?.visibility = android.view.View.GONE
                 }
             }
     }

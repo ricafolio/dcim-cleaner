@@ -31,9 +31,19 @@
 
                 <ProgressBar
                     android:id="@+id/toolbar_spinner"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
                     android:layout_marginStart="8dp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/toolbar_spinner_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="5dp"
+                    android:text="indexing…"
+                    android:textSize="11sp"
+                    android:textColor="#888888"
                     android:visibility="gone" />
 
             </LinearLayout>

@@ -9,7 +9,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.dcimcleaner.R
+import com.dcimcleaner.MainActivity
 import com.dcimcleaner.data.repository.PhotoRepository
 import com.dcimcleaner.databinding.FragmentSettingsBinding
 import com.dcimcleaner.worker.IndexWorker
@@ -69,11 +69,11 @@ class SettingsFragment : Fragment() {
 
     private fun setupReindex() {
         binding.btnReindex.setOnClickListener {
-            lifecycleScope.launch {
-                repo.clearIndex()
-            }
-            // Enqueue directly — does NOT show the header progress bar
+            lifecycleScope.launch { repo.clearIndex() }
+            // Use force enqueue — bypasses header progress bar, shows toolbar spinner only
             IndexWorker.enqueueForce(requireContext())
+            // Tell MainActivity to show toolbar spinner (no header progress bar)
+            (activity as? MainActivity)?.showToolbarSpinner()
             Toast.makeText(requireContext(), "Re-indexing started…", Toast.LENGTH_SHORT).show()
         }
     }
