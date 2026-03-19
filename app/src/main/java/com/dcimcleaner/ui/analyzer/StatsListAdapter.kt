@@ -35,7 +35,10 @@ class StatsListAdapter(
         val row = displayRows[position]
         holder.b.tvDate.text = row.displayDate
         holder.b.tvCount.text = "${row.count} files"
-        holder.b.tvSize.text = "${"%.1f".format(row.sizeMb)} MB"
+        holder.b.tvSize.text = if (row.sizeMb >= 1024f)
+            "${"%.1f".format(row.sizeMb / 1024f)} GB"
+        else
+            "${"%.1f".format(row.sizeMb)} MB"
         holder.b.root.setOnClickListener { onRowClick(row) }
     }
 
