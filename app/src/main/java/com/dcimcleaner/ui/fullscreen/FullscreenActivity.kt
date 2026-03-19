@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -36,7 +37,6 @@ class FullscreenActivity : AppCompatActivity() {
     private lateinit var repo: PhotoRepository
     private var pendingTrashEntry: PhotoEntry? = null
 
-    // Track what was trashed so we can return it to the grid
     private val trashedUris = mutableListOf<String>()
     private val trashedSizes = mutableListOf<Float>()
 
@@ -44,9 +44,7 @@ class FullscreenActivity : AppCompatActivity() {
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            pendingTrashEntry?.let { entry ->
-                recordAndRemove(entry)
-            }
+            pendingTrashEntry?.let { entry -> recordAndRemove(entry) }
         }
         pendingTrashEntry = null
     }
@@ -84,6 +82,31 @@ class FullscreenActivity : AppCompatActivity() {
         }
 
         binding.btnBack.setOnClickListener { finishWithResult() }
+
+        // Set tap zone widths to 15% of screen each
+        setupCornerTapZones()
+    }
+
+    private fun setupCornerTapZones() {
+        val screenWidth = resources.displayMetrics.widthPixels
+        val zoneWidth = (screenWidth * 0.15f).toInt()
+
+        binding.tapLeft.layoutParams = (binding.tapLeft.layoutParams as ViewGroup.LayoutParams).apply {
+            width = zoneWidth
+        }
+        binding.tapRight.layoutParams = (binding.tapRight.layoutParams as ViewGroup.LayoutParams).apply {
+            width = zoneWidth
+        }
+
+        binding.tapLeft.setOnClickListener {
+            val cur = binding.viewPager.currentItem
+            if (cur > 0) binding.viewPager.setCurrentItem(cur - 1, true)
+        }
+
+        binding.tapRight.setOnClickListener {
+            val cur = binding.viewPager.currentItem
+            if (cur < photos.size - 1) binding.viewPager.setCurrentItem(cur + 1, true)
+        }
     }
 
     private fun trashCurrent(entry: PhotoEntry) {
@@ -91,12 +114,11 @@ class FullscreenActivity : AppCompatActivity() {
             when (val result = repo.moveToTrash(entry)) {
                 is TrashResult.Success -> {
                     recordAndRemove(entry)
-                    Toast.makeText(this@FullscreenActivity, "Trashed: ${entry.fileName}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FullscreenActivity, "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
                 }
                 is TrashResult.NeedsIntent -> {
                     pendingTrashEntry = entry
                     trashLauncher.launch(IntentSenderRequest.Builder(result.intentSender).build())
-                    Toast.makeText(this@FullscreenActivity, "Trashed: ${entry.fileName}!", Toast.LENGTH_SHORT).show()
                 }
                 is TrashResult.Failed -> android.util.Log.e("TRASH", "Failed to trash")
             }
@@ -106,7 +128,6 @@ class FullscreenActivity : AppCompatActivity() {
     private fun recordAndRemove(entry: PhotoEntry) {
         trashedUris.add(entry.uri)
         trashedSizes.add(entry.sizeMb)
-        repo // deleteFromIndex happens in ImagesFragment via result
         val pos = binding.viewPager.currentItem
         if (pos < photos.size) {
             photos.removeAt(pos)
@@ -125,14 +146,7 @@ class FullscreenActivity : AppCompatActivity() {
         finish()
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        finishWithResult()
-        return true
-    }
-
-    override fun onBackPressed() {
-        finishWithResult()
-    }
+    override fun onBackPressed() { finishWithResult() }
 
     private var touchStartY = 0f
     private var touchStartX = 0f

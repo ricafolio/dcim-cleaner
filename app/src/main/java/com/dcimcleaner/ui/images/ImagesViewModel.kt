@@ -11,6 +11,8 @@ import com.dcimcleaner.data.repository.PhotoRepository
 import com.dcimcleaner.data.repository.SessionPrefs
 import com.dcimcleaner.data.repository.TrashResult
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ImagesViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -24,13 +26,25 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
     val trashModeEnabled = MutableLiveData(false)
     val hasPrevious = MutableLiveData(false)
 
+    private fun formatDisplayDate(key: String, type: String): String {
+        return try {
+            if (type == "month") {
+                val sdf = SimpleDateFormat("yyyy-MM", Locale.US)
+                SimpleDateFormat("MMMM yyyy", Locale.US).format(sdf.parse(key)!!)
+            } else {
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                SimpleDateFormat("MMMM d, yyyy", Locale.US).format(sdf.parse(key)!!)
+            }
+        } catch (e: Exception) { key }
+    }
+
     private fun setDate(type: String, key: String) {
         val prev = currentDate.value
         val prevType = currentDateType.value
         if (!prev.isNullOrEmpty() && !prevType.isNullOrEmpty()) {
             session.pushHistory(prevType, prev)
         }
-        currentDate.value = key
+        currentDate.value = formatDisplayDate(key, type)
         currentDateType.value = type
         session.lastVisitedDate = key
         session.lastVisitedType = type
@@ -63,7 +77,7 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
 
     fun goToPrevious() = viewModelScope.launch {
         val (type, date) = session.popHistory() ?: return@launch
-        currentDate.value = date
+        currentDate.value = formatDisplayDate(date, type)
         currentDateType.value = type
         photos.value = if (type == "month") repo.getPhotosByMonth(date) else repo.getPhotosByDay(date)
         hasPrevious.value = session.hasHistory()
@@ -77,7 +91,7 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
                 is TrashResult.Success -> {
                     session.addTrashed(entry.sizeMb)
                     removeFromList(entry.uri)
-                    Toast.makeText(getApplication(), "Trashed: ${entry.fileName}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(getApplication(), "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
                     onDone()
                 }
                 is TrashResult.NeedsIntent -> onNeedsIntent(result.intentSender)
@@ -86,12 +100,11 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Called after RecoverableSecurityException permission granted
     fun recordTrashAndRemove(entry: PhotoEntry) {
         viewModelScope.launch {
             session.addTrashed(entry.sizeMb)
             removeFromList(entry.uri)
-            Toast.makeText(getApplication(), "Trashed: ${entry.fileName}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(getApplication(), "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -103,5 +116,14 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun removeFromList(uri: String) {
         repo.deleteFromIndex(uri)
         photos.value = photos.value?.filter { it.uri != uri }
+    }
+
+    // Re-fetch photos for the current date — call after restore from trash
+    fun reloadCurrentDate() = viewModelScope.launch {
+        val date = session.lastVisitedDate
+        val type = session.lastVisitedType
+        if (date.isEmpty()) return@launch
+        photos.value = if (type == "month") repo.getPhotosByMonth(date)
+                       else repo.getPhotosByDay(date)
     }
 }

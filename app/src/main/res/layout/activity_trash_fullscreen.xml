@@ -12,6 +12,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
+        android:background="#CC000000"
         android:padding="8dp">
 
         <ImageButton
@@ -32,9 +33,19 @@
             android:textSize="14sp"
             android:text="" />
 
-        <View
-            android:layout_width="40dp"
-            android:layout_height="40dp" />
+        <!-- Restore button — outline style, top right -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_restore"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Restore"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            app:strokeColor="#FFFFFF"
+            app:icon="@null"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
+
     </LinearLayout>
 
     <!-- Photo pager -->
@@ -44,12 +55,11 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- Delete button — full width red -->
+    <!-- Delete button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_delete"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_margin="12dp"
         android:backgroundTint="#bd0000"
         android:text="Delete permanently"
         android:textSize="15sp"

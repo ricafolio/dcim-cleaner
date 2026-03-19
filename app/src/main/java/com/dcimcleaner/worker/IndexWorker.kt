@@ -13,12 +13,23 @@ class IndexWorker(
         const val PROGRESS_KEY = "progress"
         const val WORK_NAME = "dcim_index_work"
 
+        // First-time index — skip if already running
         fun enqueue(context: Context): OneTimeWorkRequest {
             val request = OneTimeWorkRequestBuilder<IndexWorker>()
                 .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
             WorkManager.getInstance(context)
                 .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.KEEP, request)
+            return request
+        }
+
+        // Re-index from Settings — always replace
+        fun enqueueForce(context: Context): OneTimeWorkRequest {
+            val request = OneTimeWorkRequestBuilder<IndexWorker>()
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .build()
+            WorkManager.getInstance(context)
+                .enqueueUniqueWork(WORK_NAME, ExistingWorkPolicy.REPLACE, request)
             return request
         }
     }

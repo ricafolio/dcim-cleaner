@@ -39,6 +39,14 @@ class TrashFragment : Fragment() {
         }
     }
 
+    // Use result launcher so we know when fullscreen closes (restore/delete happened)
+    private val fullscreenLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { _ ->
+        // Always reload after returning from fullscreen — delete or restore may have happened
+        loadPhotos()
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentTrashBinding.inflate(inflater, container, false)
         return binding.root
@@ -53,9 +61,7 @@ class TrashFragment : Fragment() {
 
         binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
         binding.recyclerView.adapter = adapter
-
         binding.btnEmptyTrash.setOnClickListener { confirmEmptyTrash() }
-
         loadPhotos()
     }
 
@@ -80,8 +86,7 @@ class TrashFragment : Fragment() {
             binding.recyclerView.visibility = View.GONE
         } else {
             val totalMb = photos.sumOf { it.sizeMb.toDouble() }.toFloat()
-            val sizeText = formatSize(totalMb)
-            binding.tvStats.text = "${photos.size} photos · $sizeText"
+            binding.tvStats.text = "${photos.size} photos · ${formatSize(totalMb)}"
             binding.btnEmptyTrash.visibility = View.VISIBLE
             binding.tvEmpty.visibility = View.GONE
             binding.recyclerView.visibility = View.VISIBLE
@@ -116,10 +121,10 @@ class TrashFragment : Fragment() {
             putStringArrayListExtra(TrashFullscreenActivity.EXTRA_URIS, uris)
             putExtra(TrashFullscreenActivity.EXTRA_POSITION, startPosition)
         }
-        startActivity(intent)
+        fullscreenLauncher.launch(intent)
     }
 
-    fun formatSize(mb: Float): String =
+    private fun formatSize(mb: Float): String =
         if (mb >= 1024f) "${"%.1f".format(mb / 1024f)} GB" else "${"%.1f".format(mb)} MB"
 
     override fun onDestroyView() {

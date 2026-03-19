@@ -7,7 +7,10 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -22,17 +25,19 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dcimcleaner.data.repository.PhotoRepository
 import com.dcimcleaner.data.repository.SessionPrefs
+import com.dcimcleaner.data.repository.TrashRepository
 import com.dcimcleaner.databinding.ActivityMainBinding
 import com.dcimcleaner.worker.IndexWorker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import android.view.Menu
-import android.view.MenuItem
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var appBarConfig: AppBarConfiguration
     private lateinit var repo: PhotoRepository
+    private var trashBadgeView: TextView? = null
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -62,6 +67,13 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout
         )
         setupActionBarWithNavController(navController, appBarConfig)
+
+        supportActionBar?.setDisplayShowTitleEnabled(false)
+        val toolbarTitle = binding.appBarMain.toolbar.findViewById<TextView>(R.id.toolbar_title)
+        findNavController(R.id.nav_host_fragment).addOnDestinationChangedListener { _, destination, _ ->
+            toolbarTitle.text = destination.label
+        }
+
         binding.navView.setupWithNavController(navController)
 
         binding.navView.setNavigationItemSelectedListener { item ->
@@ -109,6 +121,76 @@ class MainActivity : AppCompatActivity() {
         }
 
         checkPermissionsAndIndex()
+        refreshTrashBadge()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshTrashBadge()
+    }
+
+    private fun refreshTrashBadge() {
+        lifecycleScope.launch {
+            val count = withContext(Dispatchers.IO) { TrashRepository(this@MainActivity).getTrashedCount() }
+
+            // Toolbar badge
+            trashBadgeView?.let { badge ->
+                if (count > 0) {
+                    badge.visibility = View.VISIBLE
+                    badge.text = if (count > 99) "99+" else count.toString()
+                } else {
+                    badge.visibility = View.GONE
+                }
+            }
+
+            // Sidebar nav badge via actionLayout
+            val trashItem = binding.navView.menu.findItem(R.id.nav_trash)
+            val actionView = trashItem?.actionView
+            val navBadge = actionView?.findViewById<TextView>(R.id.tv_nav_trash_badge)
+            if (count > 0) {
+                navBadge?.visibility = View.VISIBLE
+                navBadge?.text = if (count > 99) "99+" else count.toString()
+            } else {
+                navBadge?.visibility = View.GONE
+            }
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu, menu)
+
+        // Wire up the custom trash action view badge
+        val trashItem = menu.findItem(R.id.action_trash)
+        val actionView = trashItem?.actionView
+        trashBadgeView = actionView?.findViewById(R.id.tv_trash_badge)
+        actionView?.setOnClickListener {
+            findNavController(R.id.nav_host_fragment).navigate(R.id.nav_trash)
+        }
+
+        findNavController(R.id.nav_host_fragment).addOnDestinationChangedListener { _, destination, _ ->
+            val isHome = destination.id == R.id.nav_home
+            menu.findItem(R.id.action_home)?.isVisible = !isHome
+            menu.findItem(R.id.action_trash)?.isVisible = !isHome
+        }
+
+        refreshTrashBadge()
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_home -> {
+                findNavController(R.id.nav_host_fragment).navigate(
+                    R.id.nav_home, null,
+                    androidx.navigation.NavOptions.Builder()
+                        .setPopUpTo(R.id.nav_home, true)
+                        .setLaunchSingleTop(true)
+                        .build()
+                )
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     private fun checkPermissionsAndIndex() {
@@ -141,6 +223,10 @@ class MainActivity : AppCompatActivity() {
         val progressBar = binding.appBarMain.progressBar
         progressBar.visibility = View.VISIBLE
         progressBar.progress = 0
+
+        val toolbarSpinner = binding.appBarMain.toolbar.findViewById<View>(R.id.toolbar_spinner)
+        toolbarSpinner?.visibility = View.VISIBLE
+
         IndexWorker.enqueue(this)
         WorkManager.getInstance(this)
             .getWorkInfosForUniqueWorkLiveData(IndexWorker.WORK_NAME)
@@ -149,6 +235,7 @@ class MainActivity : AppCompatActivity() {
                 progressBar.progress = info.progress.getInt(IndexWorker.PROGRESS_KEY, 0)
                 if (info.state == WorkInfo.State.SUCCEEDED || info.state == WorkInfo.State.FAILED) {
                     progressBar.visibility = View.GONE
+                    toolbarSpinner?.visibility = View.GONE
                     supportFragmentManager.fragments.forEach { frag ->
                         frag.childFragmentManager.fragments.forEach { child ->
                             if (child is IndexCompleteListener) child.onIndexComplete()
@@ -156,33 +243,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toolbar_menu, menu)
-
-        // Hide home button when already on home screen
-        findNavController(R.id.nav_host_fragment).addOnDestinationChangedListener { _, destination, _ ->
-            menu.findItem(R.id.action_home)?.isVisible = destination.id != R.id.nav_home
-        }
-
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_home -> {
-                findNavController(R.id.nav_host_fragment).navigate(
-                    R.id.nav_home, null,
-                    androidx.navigation.NavOptions.Builder()
-                        .setPopUpTo(R.id.nav_home, true)
-                        .setLaunchSingleTop(true)
-                        .build()
-                )
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
     }
 
     override fun onSupportNavigateUp() =

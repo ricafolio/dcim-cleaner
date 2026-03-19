@@ -1,103 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#000">
 
-    <!-- Top bar with back button and file info -->
+    <!-- Main vertical stack -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="#CC000000"
-        android:gravity="center_vertical"
-        android:padding="8dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
-        <ImageButton
-            android:id="@+id/btn_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_arrow_back"
-            android:contentDescription="Back" />
-
+        <!-- Top bar -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="8dp">
+            android:orientation="horizontal"
+            android:background="#CC000000"
+            android:gravity="center_vertical"
+            android:padding="8dp">
 
-            <TextView
-                android:id="@+id/tv_file_name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="#FFF"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:singleLine="true"
-                android:ellipsize="middle" />
+            <ImageButton
+                android:id="@+id/btn_back"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_arrow_back"
+                android:contentDescription="Back" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="8dp">
 
                 <TextView
-                    android:id="@+id/tv_datetime"
+                    android:id="@+id/tv_file_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#CCC"
-                    android:textSize="11sp" />
+                    android:textColor="#FFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:singleLine="true"
+                    android:ellipsize="middle" />
 
-                <TextView
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#CCC"
-                    android:textSize="11sp"
-                    android:text="  ·  " />
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/tv_size"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="#CCC"
-                    android:textSize="11sp" />
+                    <TextView
+                        android:id="@+id/tv_datetime"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#CCC"
+                        android:textSize="11sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="#CCC"
-                    android:textSize="11sp"
-                    android:text="  ·  " />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#CCC"
+                        android:textSize="11sp"
+                        android:text="  ·  " />
 
-                <TextView
-                    android:id="@+id/tv_dimensions"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="#CCC"
-                    android:textSize="11sp" />
+                    <TextView
+                        android:id="@+id/tv_size"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#CCC"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#CCC"
+                        android:textSize="11sp"
+                        android:text="  ·  " />
+
+                    <TextView
+                        android:id="@+id/tv_dimensions"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="#CCC"
+                        android:textSize="11sp" />
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
+
+        <!-- ViewPager -->
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/view_pager"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- Bottom trash button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_trash"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="🗑  Move to Trash"
+            android:textColor="#FFF"
+            android:backgroundTint="#CC880000"
+            android:textSize="15sp" />
+
     </LinearLayout>
 
-    <!-- ViewPager takes remaining space -->
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/view_pager"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+    <!-- Left tap zone — invisible, sits over the left 15% of screen, excluding top bar and bottom button -->
+    <View
+        android:id="@+id/tap_left"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@android:color/transparent"
+        android:layout_marginTop="56dp"
+        android:layout_marginBottom="52dp"
+        android:layout_weight="0"
+        android:clickable="true"
+        android:focusable="true" />
 
-    <!-- Bottom trash button -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_trash"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:text="🗑  Move to Trash"
-        android:textColor="#FFF"
-        android:backgroundTint="#CC880000"
-        android:textSize="15sp" />
+    <!-- Right tap zone -->
+    <View
+        android:id="@+id/tap_right"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:background="@android:color/transparent"
+        android:layout_marginTop="56dp"
+        android:layout_marginBottom="52dp"
+        android:layout_weight="0"
+        android:clickable="true"
+        android:focusable="true" />
 
-</LinearLayout>
+</FrameLayout>

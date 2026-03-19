@@ -2,6 +2,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_trash"
+        android:icon="@drawable/ic_trash"
+        android:title="Trash"
+        app:showAsAction="always"
+        app:actionLayout="@layout/toolbar_trash_badge" />
+    <item
         android:id="@+id/action_home"
         android:icon="@drawable/ic_home"
         android:title="Home"

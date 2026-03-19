@@ -3,12 +3,12 @@ package com.dcimcleaner.ui.settings
 import android.os.Bundle
 import android.os.Environment
 import android.view.*
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.dcimcleaner.MainActivity
 import com.dcimcleaner.R
 import com.dcimcleaner.data.repository.PhotoRepository
 import com.dcimcleaner.databinding.FragmentSettingsBinding
@@ -16,13 +16,11 @@ import com.dcimcleaner.worker.IndexWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 class SettingsFragment : Fragment() {
 
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
-
     private lateinit var repo: PhotoRepository
     private lateinit var folderAdapter: FolderToggleAdapter
 
@@ -33,7 +31,6 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         repo = PhotoRepository(requireContext())
-
         setupFolderList()
         setupReindex()
         observeIndexProgress()
@@ -49,13 +46,10 @@ class SettingsFragment : Fragment() {
                 dcimPath.listFiles()
                     ?.filter { it.isDirectory }
                     ?.map { it.name }
-                    ?.sorted()
-                    ?: emptyList()
+                    ?.sorted() ?: emptyList()
             }
 
-            val items = folders.map { name ->
-                FolderItem(name, ignoredSet.contains(name))
-            }
+            val items = folders.map { name -> FolderItem(name, ignoredSet.contains(name)) }
 
             folderAdapter = FolderToggleAdapter(items) { folderName, ignored ->
                 val current = prefs.getStringSet("ignored_folders", emptySet())?.toMutableSet() ?: mutableSetOf()
@@ -76,11 +70,11 @@ class SettingsFragment : Fragment() {
     private fun setupReindex() {
         binding.btnReindex.setOnClickListener {
             lifecycleScope.launch {
-                // Clear old index so buildIndex runs fresh
                 repo.clearIndex()
             }
-            // Trigger re-index via MainActivity
-            (activity as? MainActivity)?.launchIndexWorker()
+            // Enqueue directly — does NOT show the header progress bar
+            IndexWorker.enqueueForce(requireContext())
+            Toast.makeText(requireContext(), "Re-indexing started…", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -96,7 +90,7 @@ class SettingsFragment : Fragment() {
                     WorkInfo.State.RUNNING -> {
                         binding.progressReindex.visibility = View.VISIBLE
                         binding.btnReindex.isEnabled = false
-                        binding.tvReindexStatus.text = "Indexing... $progress%"
+                        binding.tvReindexStatus.text = "Indexing… $progress%"
                     }
                     WorkInfo.State.SUCCEEDED -> {
                         binding.progressReindex.visibility = View.GONE

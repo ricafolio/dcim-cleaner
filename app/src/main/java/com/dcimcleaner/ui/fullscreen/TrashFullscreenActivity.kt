@@ -1,6 +1,7 @@
 package com.dcimcleaner.ui.fullscreen
 
 import android.app.Activity
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,33 +14,40 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.widget.ViewPager2
 import com.dcimcleaner.databinding.ActivityTrashFullscreenBinding
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 
 class TrashFullscreenActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_URIS = "extra_uris"
         const val EXTRA_POSITION = "extra_position"
+        const val RESULT_RESTORED_URIS = "result_restored_uris"
     }
 
     private lateinit var binding: ActivityTrashFullscreenBinding
     private var uris = mutableListOf<String>()
     private lateinit var adapter: TrashFullscreenAdapter
     private var pendingDeleteUri: String? = null
+    private val restoredUris = mutableListOf<String>()
 
     private val deleteLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             Toast.makeText(this, "Photo permanently deleted", Toast.LENGTH_SHORT).show()
-            val pos = binding.viewPager.currentItem
-            uris.removeAt(pos)
-            adapter.submitList(uris.toList())
-            if (uris.isEmpty()) finish()
-            else updateInfo()
+            removeCurrentAndAdvance()
         }
         pendingDeleteUri = null
+    }
+
+    private val restoreLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            Toast.makeText(this, "Photo restored successfully", Toast.LENGTH_SHORT).show()
+            val currentUri = uris.getOrNull(binding.viewPager.currentItem)
+            if (currentUri != null) restoredUris.add(currentUri)
+            removeCurrentAndAdvance()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,7 +73,22 @@ class TrashFullscreenActivity : AppCompatActivity() {
             confirmDelete(uri)
         }
 
-        binding.btnBack.setOnClickListener { finish() }
+        binding.btnRestore.setOnClickListener {
+            val uri = uris.getOrNull(binding.viewPager.currentItem) ?: return@setOnClickListener
+            restorePhoto(uri)
+        }
+
+        binding.btnBack.setOnClickListener { finishWithResult() }
+    }
+
+    override fun onBackPressed() { finishWithResult() }
+
+    private fun finishWithResult() {
+        val data = Intent().apply {
+            putStringArrayListExtra(RESULT_RESTORED_URIS, ArrayList(restoredUris))
+        }
+        setResult(Activity.RESULT_OK, data)
+        finish()
     }
 
     private fun confirmDelete(uriString: String) {
@@ -91,6 +114,29 @@ class TrashFullscreenActivity : AppCompatActivity() {
         }
     }
 
+    private fun restorePhoto(uriString: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        lifecycleScope.launch {
+            try {
+                val uri = Uri.parse(uriString)
+                val pi = MediaStore.createTrashRequest(contentResolver, listOf(uri), false)
+                restoreLauncher.launch(IntentSenderRequest.Builder(pi.intentSender).build())
+            } catch (e: Exception) {
+                Toast.makeText(this@TrashFullscreenActivity, "Restore failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun removeCurrentAndAdvance() {
+        val pos = binding.viewPager.currentItem
+        if (pos < uris.size) {
+            uris.removeAt(pos)
+            adapter.submitList(uris.toList())
+            if (uris.isEmpty()) finishWithResult()
+            else updateInfo()
+        }
+    }
+
     private fun updateInfo() {
         val pos = binding.viewPager.currentItem
         binding.tvPosition.text = "${pos + 1} / ${uris.size}"
@@ -102,15 +148,13 @@ class TrashFullscreenActivity : AppCompatActivity() {
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
         when (ev.action) {
             android.view.MotionEvent.ACTION_DOWN -> {
-                touchStartY = ev.y
-                touchStartX = ev.x
+                touchStartY = ev.y; touchStartX = ev.x
             }
             android.view.MotionEvent.ACTION_UP -> {
                 val deltaY = ev.y - touchStartY
                 val deltaX = kotlin.math.abs(ev.x - touchStartX)
                 if (deltaY > 200 && deltaX < deltaY * 0.5f) {
-                    finish()
-                    return true
+                    finishWithResult(); return true
                 }
             }
         }

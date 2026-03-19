@@ -3,7 +3,6 @@ package com.dcimcleaner.ui.images
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ListAdapter
@@ -26,24 +25,24 @@ class PhotoGridAdapter(
         }
     }
 
+    // Track current span so we can resize on toggle
+    private var currentSpanCount = 3
+
     inner class VH(val binding: ItemPhotoBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val binding = ItemPhotoBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-
-        val spanCount = (parent as? RecyclerView)?.let {
-            (it.layoutManager as? GridLayoutManager)?.spanCount
-        } ?: 3
-        val size = parent.width.takeIf { it > 0 }
-            ?: parent.context.resources.displayMetrics.widthPixels
-        val cellSize = size / spanCount
-        binding.root.layoutParams = ViewGroup.LayoutParams(cellSize, cellSize)
-
         return VH(binding)
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val entry = getItem(position)
+
+        // Always force square based on current span — fixes aspect ratio after grid toggle
+        val spanCount = currentSpanCount
+        val screenWidth = holder.binding.root.context.resources.displayMetrics.widthPixels
+        val cellSize = screenWidth / spanCount
+        holder.binding.root.layoutParams = ViewGroup.LayoutParams(cellSize, cellSize)
 
         Glide.with(holder.binding.image.context)
             .load(Uri.parse(entry.uri))
@@ -61,5 +60,10 @@ class PhotoGridAdapter(
 
         holder.binding.root.setOnClickListener { onPhotoClick(entry, holder.bindingAdapterPosition) }
         holder.binding.root.setOnLongClickListener { onPhotoLongClick(entry); true }
+    }
+
+    fun updateSpanCount(spanCount: Int) {
+        currentSpanCount = spanCount
+        notifyItemRangeChanged(0, itemCount)
     }
 }

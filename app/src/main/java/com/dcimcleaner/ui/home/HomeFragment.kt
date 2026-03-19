@@ -79,8 +79,9 @@ class HomeFragment : Fragment() {
 
     private fun refreshTrashButton() {
         lifecycleScope.launch {
-            val count = withContext(Dispatchers.IO) { trashRepo.getTrashedCount() }
-            val sizeMb = withContext(Dispatchers.IO) { trashRepo.getTrashedSizeMb() }
+            val photos = withContext(Dispatchers.IO) { trashRepo.getTrashedPhotos() }
+            val count = photos.size
+            val sizeMb = photos.sumOf { it.sizeMb.toDouble() }.toFloat()
             if (count == 0) {
                 binding.llTrashContainer.visibility = View.GONE
             } else {

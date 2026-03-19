@@ -27,21 +27,19 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     private val binding get() = _binding!!
     private val vm: ImagesViewModel by viewModels()
     private lateinit var adapter: PhotoGridAdapter
+    private var gridToast: Toast? = null
 
     private var pendingTrashEntry: PhotoEntry? = null
 
     private val trashLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
-                        ) { result ->
+    ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            pendingTrashEntry?.let { entry ->
-                vm.recordTrashAndRemove(entry)
-            }
+            pendingTrashEntry?.let { entry -> vm.recordTrashAndRemove(entry) }
         }
         pendingTrashEntry = null
     }
 
-    // Result from FullscreenActivity — it tells us which URIs were trashed
     private val fullscreenLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -67,7 +65,11 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
                 if (vm.trashModeEnabled.value == true) handleTrash(entry)
                 else openFullscreen(pos)
             },
-            onPhotoLongClick = { entry -> handleTrash(entry) }
+            onPhotoLongClick = { entry ->
+                // Show toast then trash
+                Toast.makeText(requireContext(), "Moving to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
+                handleTrash(entry)
+            }
         )
 
         binding.recyclerView.adapter = adapter
@@ -75,7 +77,10 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
         binding.btnRandomMonth.setOnClickListener { vm.pickRandomMonth() }
         binding.btnRandomDay.setOnClickListener { vm.pickRandomDay() }
-        binding.btnGridToggle.setOnClickListener { vm.toggleGrid() }
+
+        binding.btnGridToggle.setOnClickListener {
+            vm.toggleGrid()
+        }
 
         binding.btnTrashContainer.setOnClickListener {
             binding.btnTrash.isChecked = !binding.btnTrash.isChecked
@@ -85,7 +90,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             if (vm.trashModeEnabled.value != isChecked) {
                 vm.trashModeEnabled.value = isChecked
                 if (isChecked) {
-                    Toast.makeText(requireContext(), "Quick trash enabled: Tap a photo in grid to trash instantly", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Quick trash enabled — tap a photo to trash instantly", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -101,17 +106,22 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         }
 
         vm.isCompactGrid.observe(viewLifecycleOwner) { compact ->
+            val spanCount = if (compact) 5 else 3
             updateGridLayout(compact)
+            adapter.updateSpanCount(spanCount)
             binding.ivGridIcon.setImageResource(
                 if (compact) R.drawable.ic_grid_large else R.drawable.ic_grid_compact
             )
+            val label = if (compact) "5-column grid" else "3-column grid"
+            gridToast?.cancel()
+            gridToast = Toast.makeText(requireContext(), label, Toast.LENGTH_SHORT)
+            gridToast?.show()
         }
 
         vm.currentDate.observe(viewLifecycleOwner) { date ->
             binding.tvDate.text = date
         }
 
-        // Handle arguments — from Analyzer or Home
         if (vm.photos.value.isNullOrEmpty()) {
             arguments?.getString("pick_random")?.let { type ->
                 if (type == "month") vm.pickRandomMonth() else vm.pickRandomDay()
@@ -143,6 +153,14 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             putExtra(FullscreenActivity.EXTRA_POSITION, startPosition)
         }
         fullscreenLauncher.launch(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reload grid in case photos were restored from trash while we were away
+        if (!vm.photos.value.isNullOrEmpty()) {
+            vm.reloadCurrentDate()
+        }
     }
 
     override fun onIndexComplete() {}
