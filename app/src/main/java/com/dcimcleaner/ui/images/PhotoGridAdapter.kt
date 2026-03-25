@@ -45,12 +45,13 @@ class PhotoGridAdapter(
         holder.binding.root.layoutParams = ViewGroup.LayoutParams(cellSize, cellSize)
 
         Glide.with(holder.binding.image.context)
-            .load(Uri.parse(entry.uri))
-            .override(300, 300)
-            .centerCrop()
-            .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
-            .placeholder(R.drawable.ic_photo_placeholder)
-            .into(holder.binding.image)
+                .load(Uri.parse(entry.uri))
+                // Increase resolution for 2-column mode (e.g., 500px or 600px)
+                .override(if (currentSpanCount <= 2) 600 else 300)
+                .centerCrop()
+                .diskCacheStrategy(DiskCacheStrategy.RESOURCE)
+                .placeholder(R.drawable.ic_photo_placeholder)
+                .into(holder.binding.image)
 
         holder.binding.tvSize.text = if (entry.sizeMb >= 1f) {
             "${"%.1f".format(entry.sizeMb)}MB"

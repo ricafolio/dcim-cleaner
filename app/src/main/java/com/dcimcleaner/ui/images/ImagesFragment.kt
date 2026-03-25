@@ -90,7 +90,8 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         )
 
         binding.recyclerView.adapter = adapter
-        updateGridLayout(isCompact = false)
+        val initialSpan = vm.spanCount.value ?: 3
+        updateGridLayout(initialSpan)
 
         binding.btnRandomMonth.setOnClickListener { vm.pickRandomMonth() }
         binding.btnRandomDay.setOnClickListener { vm.pickRandomDay() }
@@ -120,15 +121,22 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             binding.tvStats.text = "${photos.size} photos · $sizeText"
         }
 
-        vm.isCompactGrid.observe(viewLifecycleOwner) { compact ->
-            val spanCount = if (compact) 5 else 3
-            updateGridLayout(compact)
-            adapter.updateSpanCount(spanCount)
+        vm.spanCount.observe(viewLifecycleOwner) { span ->
+            // Update layout and adapter
+            updateGridLayout(span)
+            adapter.updateSpanCount(span)
+
+            // Update Icon based on state
             binding.ivGridIcon.setImageResource(
-                if (compact) R.drawable.ic_grid_large else R.drawable.ic_grid_compact
+                when(span) {
+                    2 -> R.drawable.ic_grid_large    // You may need to add/choose icons
+                    3 -> R.drawable.ic_grid_compact
+                    else -> R.drawable.ic_grid_compact
+                }
             )
+
             if (gridToggleInitialized) {
-                val label = if (compact) "5-column grid" else "3-column grid"
+                val label = "$span-column grid"
                 gridToast?.cancel()
                 gridToast = Toast.makeText(requireContext(), label, Toast.LENGTH_SHORT)
                 gridToast?.show()
@@ -147,8 +155,8 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         }
     }
 
-    private fun updateGridLayout(isCompact: Boolean) {
-        binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), if (isCompact) 5 else 3)
+    private fun updateGridLayout(span: Int) {
+        binding.recyclerView.layoutManager = GridLayoutManager(requireContext(), span)
     }
 
     private fun handleTrash(entry: PhotoEntry) {

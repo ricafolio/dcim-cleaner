@@ -26,6 +26,7 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
     val isCompactGrid = MutableLiveData(false)
     val trashModeEnabled = MutableLiveData(false)
     val hasPrevious = MutableLiveData(false)
+    val spanCount = MutableLiveData<Int>(3)
 
     private fun formatDisplayDate(key: String, type: String): String {
         return try {
@@ -84,7 +85,15 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
         hasPrevious.value = session.hasHistory()
     }
 
-    fun toggleGrid() { isCompactGrid.value = !(isCompactGrid.value ?: false) }
+    fun toggleGrid() {
+        spanCount.value = when (spanCount.value) {
+            2 -> 3
+            3 -> 5
+            else -> 2 // Cycles back to 2
+        }
+        // If you have a preference repository, save it here:
+        // prefs.setSpanCount(spanCount.value!!)
+    }
 
     fun trashPhoto(entry: PhotoEntry, onNeedsIntent: (IntentSender) -> Unit, onDone: () -> Unit) {
         viewModelScope.launch {
