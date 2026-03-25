@@ -30,11 +30,11 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
     private fun formatDisplayDate(key: String, type: String): String {
         return try {
             if (type == "month") {
-                SimpleDateFormat("MMMM yyyy", Locale.US)
-                    .format(SimpleDateFormat("yyyy-MM", Locale.US).parse(key)!!)
+                val sdf = SimpleDateFormat("yyyy-MM", Locale.US)
+                SimpleDateFormat("MMMM yyyy", Locale.US).format(sdf.parse(key)!!)
             } else {
-                SimpleDateFormat("MMMM d, yyyy", Locale.US)
-                    .format(SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(key)!!)
+                val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                SimpleDateFormat("MMMM d, yyyy", Locale.US).format(sdf.parse(key)!!)
             }
         } catch (e: Exception) { key }
     }
@@ -42,7 +42,9 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
     private fun setDate(type: String, key: String) {
         val prev = currentDate.value
         val prevType = currentDateType.value
-        if (!prev.isNullOrEmpty() && !prevType.isNullOrEmpty()) session.pushHistory(prevType, prev)
+        if (!prev.isNullOrEmpty() && !prevType.isNullOrEmpty()) {
+            session.pushHistory(prevType, prev)
+        }
         currentDate.value = formatDisplayDate(key, type)
         currentDateType.value = type
         session.lastVisitedDate = key
@@ -53,21 +55,25 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
     fun pickRandomMonth() = viewModelScope.launch {
         val (key, list) = repo.getRandomMonthPhotos()
         if (key.isEmpty()) return@launch
-        setDate("month", key); photos.value = list
+        setDate("month", key)
+        photos.value = list
     }
 
     fun pickRandomDay() = viewModelScope.launch {
         val (key, list) = repo.getRandomDayPhotos()
         if (key.isEmpty()) return@launch
-        setDate("day", key); photos.value = list
+        setDate("day", key)
+        photos.value = list
     }
 
     fun loadByMonth(month: String) = viewModelScope.launch {
-        setDate("month", month); photos.value = repo.getPhotosByMonth(month)
+        setDate("month", month)
+        photos.value = repo.getPhotosByMonth(month)
     }
 
     fun loadByDay(day: String) = viewModelScope.launch {
-        setDate("day", day); photos.value = repo.getPhotosByDay(day)
+        setDate("day", day)
+        photos.value = repo.getPhotosByDay(day)
     }
 
     fun goToPrevious() = viewModelScope.launch {
@@ -91,33 +97,27 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
                     trashToast?.show()
                     onDone()
                 }
-                is TrashResult.NeedsIntent -> {
-                    // Optimistically remove from grid immediately — no need to wait for dialog
-                    // If user denies, recordTrashAndRemove won't be called so nothing breaks
-                    removeFromListOptimistic(entry.uri)
-                    onNeedsIntent(result.intentSender)
-                }
+                is TrashResult.NeedsIntent -> onNeedsIntent(result.intentSender)
                 is TrashResult.Failed -> onDone()
             }
         }
     }
 
-    // Called after system dialog confirmed — just update stats, grid already updated
+    // Called after system dialog confirmed — stats + DB only, grid already removed optimistically
     fun recordTrashAndRemove(entry: PhotoEntry) {
         viewModelScope.launch {
             session.addTrashed(entry.sizeMb)
             repo.deleteFromIndex(entry.uri)
-            Toast.makeText(getApplication(), "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
         }
-    }
-
-    // Optimistic removal — updates UI instantly without waiting for dialog
-    private fun removeFromListOptimistic(uri: String) {
-        photos.value = photos.value?.filter { it.uri != uri }
     }
 
     fun removeFromIndex(uri: String) = viewModelScope.launch {
         repo.deleteFromIndex(uri)
+        photos.value = photos.value?.filter { it.uri != uri }
+    }
+
+    // Optimistic removal — updates UI instantly without waiting for system dialog
+    fun removeFromListOptimistic(uri: String) {
         photos.value = photos.value?.filter { it.uri != uri }
     }
 
@@ -126,11 +126,7 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
         photos.value = photos.value?.filter { it.uri != uri }
     }
 
-    fun reloadAfterRestore(restoredPaths: List<String>) = viewModelScope.launch {
-        restoredPaths.forEach { path -> repo.reIndexByPath(path) }
-        reloadCurrentDate()
-    }
-
+    // Re-fetch photos for the current date — call after restore from trash
     fun reloadCurrentDate() = viewModelScope.launch {
         val date = session.lastVisitedDate
         val type = session.lastVisitedType

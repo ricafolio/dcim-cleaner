@@ -21,6 +21,7 @@ import com.dcimcleaner.databinding.FragmentImagesBinding
 import com.dcimcleaner.ui.fullscreen.FullscreenActivity
 import com.dcimcleaner.ui.fullscreen.TrashFullscreenActivity
 import kotlinx.coroutines.launch
+import java.util.LinkedList
 
 class ImagesFragment : Fragment(), IndexCompleteListener {
 
@@ -31,15 +32,32 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     private var gridToast: Toast? = null
     private var trashToast: Toast? = null
     private var gridToggleInitialized = false
+
+    // Queue for entries waiting to be trashed while a system dialog is open
     private var pendingTrashEntry: PhotoEntry? = null
+    private val trashQueue = LinkedList<PhotoEntry>()
+    private var isTrashDialogActive = false
 
     private val trashLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
+        isTrashDialogActive = false
         if (result.resultCode == Activity.RESULT_OK) {
-            pendingTrashEntry?.let { entry -> vm.recordTrashAndRemove(entry) }
+            pendingTrashEntry?.let { entry ->
+                vm.recordTrashAndRemove(entry)
+                showTrashToast("Moved to trash: ${entry.fileName}")
+            }
+        } else {
+            // User denied — put it back so queue can continue
+            pendingTrashEntry?.let { entry ->
+                // Re-add to photos since we removed optimistically
+                // reloadCurrentDate will restore it
+                vm.reloadCurrentDate()
+            }
         }
         pendingTrashEntry = null
+        // Process next in queue
+        processTrashQueue()
     }
 
     private val fullscreenLauncher = registerForActivityResult(
@@ -49,15 +67,11 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             val trashedUris = result.data?.getStringArrayListExtra(FullscreenActivity.RESULT_TRASHED_URIS)
             val trashedSizes = result.data?.getFloatArrayExtra(FullscreenActivity.RESULT_TRASHED_SIZES)
             trashedUris?.forEachIndexed { i, uri ->
-                val sizeMb = trashedSizes?.getOrNull(i) ?: 0f
-                vm.session.addTrashed(sizeMb)
+                vm.session.addTrashed(trashedSizes?.getOrNull(i) ?: 0f)
                 vm.removeFromIndex(uri)
             }
-
             val restoredPaths = result.data?.getStringArrayListExtra(TrashFullscreenActivity.RESULT_RESTORED_PATHS)
-            if (!restoredPaths.isNullOrEmpty()) {
-                vm.reloadAfterRestore(restoredPaths)
-            }
+            // if (!restoredPaths.isNullOrEmpty()) vm.reloadAfterRestore(restoredPaths)
         }
     }
 
@@ -72,9 +86,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
                 if (vm.trashModeEnabled.value == true) handleTrash(entry)
                 else openFullscreen(pos)
             },
-            onPhotoLongClick = { entry ->
-                handleTrash(entry)
-            }
+            onPhotoLongClick = { entry -> handleTrash(entry) }
         )
 
         binding.recyclerView.adapter = adapter
@@ -91,9 +103,8 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         binding.btnTrash.setOnCheckedChangeListener { _, isChecked ->
             if (vm.trashModeEnabled.value != isChecked) {
                 vm.trashModeEnabled.value = isChecked
-                if (isChecked) {
-                    Toast.makeText(requireContext(), "Quick trash enabled — tap a photo to trash instantly", Toast.LENGTH_SHORT).show()
-                }
+                if (isChecked) Toast.makeText(requireContext(),
+                    "Quick trash enabled — tap a photo to trash instantly", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -104,11 +115,8 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         vm.photos.observe(viewLifecycleOwner) { photos ->
             adapter.submitList(photos)
             val totalMb = photos.sumOf { it.sizeMb.toDouble() }.toFloat()
-            // Show GB if over 1024 MB
-            val sizeText = if (totalMb >= 1024f)
-                "${"%.1f".format(totalMb / 1024f)} GB"
-            else
-                "${"%.1f".format(totalMb)} MB"
+            val sizeText = if (totalMb >= 1024f) "${"%.1f".format(totalMb / 1024f)} GB"
+                           else "${"%.1f".format(totalMb)} MB"
             binding.tvStats.text = "${photos.size} photos · $sizeText"
         }
 
@@ -119,7 +127,6 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             binding.ivGridIcon.setImageResource(
                 if (compact) R.drawable.ic_grid_large else R.drawable.ic_grid_compact
             )
-            // Only toast on actual user toggle, not initial emission
             if (gridToggleInitialized) {
                 val label = if (compact) "5-column grid" else "3-column grid"
                 gridToast?.cancel()
@@ -145,14 +152,42 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     }
 
     private fun handleTrash(entry: PhotoEntry) {
+        // Optimistically remove from grid immediately for responsiveness
+        vm.removeFromListOptimistic(entry.uri)
+
+        if (isTrashDialogActive) {
+            // Dialog is open — queue for after current dialog resolves
+            trashQueue.add(entry)
+        } else {
+            trashEntry(entry)
+        }
+    }
+
+    private fun trashEntry(entry: PhotoEntry) {
         vm.trashPhoto(
             entry,
             onNeedsIntent = { intentSender ->
+                isTrashDialogActive = true
                 pendingTrashEntry = entry
                 trashLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
             },
-            onDone = {}
+            onDone = {
+                // Success path (manage media) — already removed optimistically, just update stats
+                showTrashToast("Moved to trash: ${entry.fileName}")
+                processTrashQueue()
+            }
         )
+    }
+
+    private fun processTrashQueue() {
+        val next = trashQueue.poll() ?: return
+        trashEntry(next)
+    }
+
+    private fun showTrashToast(message: String) {
+        trashToast?.cancel()
+        trashToast = Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT)
+        trashToast?.show()
     }
 
     private fun openFullscreen(startPosition: Int) {
