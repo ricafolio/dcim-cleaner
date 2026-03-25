@@ -17,6 +17,7 @@ import java.util.*
 class ImagesViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = PhotoRepository(app)
+    private var trashToast: Toast? = null
     val session = SessionPrefs(app)
 
     val photos = MutableLiveData<List<PhotoEntry>>()
@@ -85,7 +86,9 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
                 is TrashResult.Success -> {
                     session.addTrashed(entry.sizeMb)
                     removeFromList(entry.uri)
-                    Toast.makeText(getApplication(), "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
+                    trashToast?.cancel()
+                    trashToast = Toast.makeText(getApplication(), "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT)
+                    trashToast?.show()
                     onDone()
                 }
                 is TrashResult.NeedsIntent -> {

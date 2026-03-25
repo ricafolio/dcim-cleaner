@@ -73,10 +73,6 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
                 else openFullscreen(pos)
             },
             onPhotoLongClick = { entry ->
-                // Cancel previous trash toast before showing new one
-                trashToast?.cancel()
-                trashToast = Toast.makeText(requireContext(), "Moving to trash: ${entry.fileName}", Toast.LENGTH_SHORT)
-                trashToast?.show()
                 handleTrash(entry)
             }
         )
