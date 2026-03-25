@@ -88,18 +88,29 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
                     Toast.makeText(getApplication(), "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
                     onDone()
                 }
-                is TrashResult.NeedsIntent -> onNeedsIntent(result.intentSender)
+                is TrashResult.NeedsIntent -> {
+                    // Optimistically remove from grid immediately — no need to wait for dialog
+                    // If user denies, recordTrashAndRemove won't be called so nothing breaks
+                    removeFromListOptimistic(entry.uri)
+                    onNeedsIntent(result.intentSender)
+                }
                 is TrashResult.Failed -> onDone()
             }
         }
     }
 
+    // Called after system dialog confirmed — just update stats, grid already updated
     fun recordTrashAndRemove(entry: PhotoEntry) {
         viewModelScope.launch {
             session.addTrashed(entry.sizeMb)
-            removeFromList(entry.uri)
+            repo.deleteFromIndex(entry.uri)
             Toast.makeText(getApplication(), "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // Optimistic removal — updates UI instantly without waiting for dialog
+    private fun removeFromListOptimistic(uri: String) {
+        photos.value = photos.value?.filter { it.uri != uri }
     }
 
     fun removeFromIndex(uri: String) = viewModelScope.launch {
@@ -112,7 +123,6 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
         photos.value = photos.value?.filter { it.uri != uri }
     }
 
-    // Re-index restored photos by file path (URI may have changed after restore), then reload grid
     fun reloadAfterRestore(restoredPaths: List<String>) = viewModelScope.launch {
         restoredPaths.forEach { path -> repo.reIndexByPath(path) }
         reloadCurrentDate()

@@ -29,8 +29,9 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     private val vm: ImagesViewModel by viewModels()
     private lateinit var adapter: PhotoGridAdapter
     private var gridToast: Toast? = null
-    private var pendingTrashEntry: PhotoEntry? = null
+    private var trashToast: Toast? = null
     private var gridToggleInitialized = false
+    private var pendingTrashEntry: PhotoEntry? = null
 
     private val trashLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -48,11 +49,11 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             val trashedUris = result.data?.getStringArrayListExtra(FullscreenActivity.RESULT_TRASHED_URIS)
             val trashedSizes = result.data?.getFloatArrayExtra(FullscreenActivity.RESULT_TRASHED_SIZES)
             trashedUris?.forEachIndexed { i, uri ->
-                vm.session.addTrashed(trashedSizes?.getOrNull(i) ?: 0f)
+                val sizeMb = trashedSizes?.getOrNull(i) ?: 0f
+                vm.session.addTrashed(sizeMb)
                 vm.removeFromIndex(uri)
             }
 
-            // Restored paths from TrashFullscreenActivity — re-index by path then reload grid
             val restoredPaths = result.data?.getStringArrayListExtra(TrashFullscreenActivity.RESULT_RESTORED_PATHS)
             if (!restoredPaths.isNullOrEmpty()) {
                 vm.reloadAfterRestore(restoredPaths)
@@ -72,7 +73,10 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
                 else openFullscreen(pos)
             },
             onPhotoLongClick = { entry ->
-                Toast.makeText(requireContext(), "Moving to trash: ${entry.fileName}", Toast.LENGTH_SHORT).show()
+                // Cancel previous trash toast before showing new one
+                trashToast?.cancel()
+                trashToast = Toast.makeText(requireContext(), "Moving to trash: ${entry.fileName}", Toast.LENGTH_SHORT)
+                trashToast?.show()
                 handleTrash(entry)
             }
         )
@@ -91,8 +95,9 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         binding.btnTrash.setOnCheckedChangeListener { _, isChecked ->
             if (vm.trashModeEnabled.value != isChecked) {
                 vm.trashModeEnabled.value = isChecked
-                if (isChecked) Toast.makeText(requireContext(),
-                    "Quick trash enabled — tap a photo to trash instantly", Toast.LENGTH_SHORT).show()
+                if (isChecked) {
+                    Toast.makeText(requireContext(), "Quick trash enabled — tap a photo to trash instantly", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -102,8 +107,13 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
         vm.photos.observe(viewLifecycleOwner) { photos ->
             adapter.submitList(photos)
-            val totalMb = photos.sumOf { it.sizeMb.toDouble() }
-            binding.tvStats.text = "${photos.size} photos · ${"%.1f".format(totalMb)} MB"
+            val totalMb = photos.sumOf { it.sizeMb.toDouble() }.toFloat()
+            // Show GB if over 1024 MB
+            val sizeText = if (totalMb >= 1024f)
+                "${"%.1f".format(totalMb / 1024f)} GB"
+            else
+                "${"%.1f".format(totalMb)} MB"
+            binding.tvStats.text = "${photos.size} photos · $sizeText"
         }
 
         vm.isCompactGrid.observe(viewLifecycleOwner) { compact ->
@@ -113,6 +123,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             binding.ivGridIcon.setImageResource(
                 if (compact) R.drawable.ic_grid_large else R.drawable.ic_grid_compact
             )
+            // Only toast on actual user toggle, not initial emission
             if (gridToggleInitialized) {
                 val label = if (compact) "5-column grid" else "3-column grid"
                 gridToast?.cancel()
@@ -138,7 +149,8 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     }
 
     private fun handleTrash(entry: PhotoEntry) {
-        vm.trashPhoto(entry,
+        vm.trashPhoto(
+            entry,
             onNeedsIntent = { intentSender ->
                 pendingTrashEntry = entry
                 trashLauncher.launch(IntentSenderRequest.Builder(intentSender).build())
