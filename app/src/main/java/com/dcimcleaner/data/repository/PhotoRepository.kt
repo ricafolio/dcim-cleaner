@@ -128,7 +128,7 @@ class PhotoRepository(private val context: Context) {
         val dayKeys = photoDao.getAllDayKeys()
         statsDao.insertDayStats(dayKeys.mapNotNull { key ->
             val photos = photoDao.getPhotosByDay(key)
-            if (photos.size >= 50) DayStat(key, photos.size, photos.sumOf { it.sizeMb.toDouble() }.toFloat())
+            if (photos.size >= 5) DayStat(key, photos.size, photos.sumOf { it.sizeMb.toDouble() }.toFloat())
             else null
         })
     }
