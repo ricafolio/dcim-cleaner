@@ -36,6 +36,7 @@ class FullscreenActivity : AppCompatActivity() {
     private var photos = mutableListOf<PhotoEntry>()
     private lateinit var repo: PhotoRepository
     private var pendingTrashEntry: PhotoEntry? = null
+    private var trashToast: Toast? = null
 
     private val trashedUris = mutableListOf<String>()
     private val trashedSizes = mutableListOf<Float>()
@@ -44,7 +45,12 @@ class FullscreenActivity : AppCompatActivity() {
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            pendingTrashEntry?.let { entry -> recordAndRemove(entry) }
+            pendingTrashEntry?.let { entry ->
+                trashToast?.cancel()
+                trashToast = Toast.makeText(this, "Moved to trash: ${entry.fileName}", Toast.LENGTH_SHORT)
+                trashToast?.show()
+                recordAndRemove(entry)
+            }
         }
         pendingTrashEntry = null
     }
