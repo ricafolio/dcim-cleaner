@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_storage_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:background="@drawable/widget_background"
-    android:padding="12dp">
+    android:padding="10dp">
 
     <!-- Left: Today -->
     <LinearLayout
@@ -13,14 +14,14 @@
         android:layout_weight="1"
         android:orientation="vertical"
         android:gravity="center_vertical"
-        android:paddingEnd="8dp">
+        android:paddingEnd="6dp">
 
         <TextView
             android:id="@+id/tv_today_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="today"
-            android:textSize="11sp"
+            android:textSize="14sp"
             android:textColor="@color/widget_text_secondary" />
 
         <TextView
@@ -28,15 +29,15 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="— GB"
-            android:textSize="26sp"
+            android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="@color/widget_text_primary" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="storage available"
-            android:textSize="11sp"
+            android:text="available"
+            android:textSize="14sp"
             android:textColor="@color/widget_text_secondary" />
     </LinearLayout>
 
@@ -55,14 +56,14 @@
         android:layout_weight="1"
         android:orientation="vertical"
         android:gravity="center_vertical"
-        android:paddingStart="8dp">
+        android:paddingStart="6dp">
 
         <TextView
             android:id="@+id/tv_yesterday_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="yesterday"
-            android:textSize="11sp"
+            android:textSize="14sp"
             android:textColor="@color/widget_text_secondary" />
 
         <TextView
@@ -70,7 +71,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="— GB"
-            android:textSize="26sp"
+            android:textSize="24sp"
             android:textStyle="bold"
             android:textColor="@color/widget_text_primary" />
 
@@ -79,7 +80,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="—"
-            android:textSize="11sp"
+            android:textSize="14sp"
             android:textColor="@color/widget_text_secondary" />
     </LinearLayout>
 </LinearLayout>
