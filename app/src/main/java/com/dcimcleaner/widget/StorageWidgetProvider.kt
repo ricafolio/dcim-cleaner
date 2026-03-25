@@ -1,8 +1,10 @@
 package com.dcimcleaner.widget
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
+import android.content.Intent
 import android.os.Environment
 import android.os.StatFs
 import android.widget.RemoteViews
@@ -12,34 +14,45 @@ import java.util.*
 
 class StorageWidgetProvider : AppWidgetProvider() {
 
+    companion object {
+        const val ACTION_REFRESH = "com.dcimcleaner.STORAGE_WIDGET_REFRESH"
+    }
+
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         ids.forEach { updateWidget(context, manager, it) }
     }
 
     override fun onEnabled(context: Context) {
-        // First time widget is added — save today's storage immediately
         saveStorageSnapshot(context)
     }
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_REFRESH) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(
+                android.content.ComponentName(context, StorageWidgetProvider::class.java)
+            )
+            ids.forEach { updateWidget(context, manager, it) }
+        }
+    }
+
     private fun saveStorageSnapshot(context: Context) {
-        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val today = sdf.format(Date())
-        val availableGb = getAvailableGb()
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         val prefs = context.getSharedPreferences("widget_storage", Context.MODE_PRIVATE)
         prefs.edit()
-            .putFloat("today_available_gb", availableGb)
+            .putFloat("today_available_gb", getAvailableGb())
             .putString("last_date", today)
             .apply()
     }
 
     private fun getAvailableGb(): Float {
         val stat = StatFs(Environment.getExternalStorageDirectory().path)
-        val availableBytes = stat.availableBlocksLong * stat.blockSizeLong
-        return availableBytes / 1_073_741_824f
+        return (stat.availableBlocksLong * stat.blockSizeLong) / 1_073_741_824f
     }
 
     private fun formatGb(gb: Float): String =
-        if (gb < 1f) "${"%.0f".format(gb * 1024)} MB"
+        if (gb < 0.1f) "${"%.0f".format(gb * 1024)} MB"
         else "${"%.1f".format(gb)} GB"
 
     private fun updateWidget(context: Context, manager: AppWidgetManager, id: Int) {
@@ -49,45 +62,43 @@ class StorageWidgetProvider : AppWidgetProvider() {
         val savedDate = prefs.getString("last_date", "")
         val availableGb = getAvailableGb()
 
-        if (savedDate.isNullOrEmpty()) {
-            // First run — save now, no yesterday data yet
-            prefs.edit()
-                .putFloat("today_available_gb", availableGb)
-                .putString("last_date", today)
-                .apply()
-        } else if (savedDate != today) {
-            // Day has changed — shift today → yesterday
-            val prevGb = prefs.getFloat("today_available_gb", -1f)
-            prefs.edit()
-                .putFloat("yesterday_available_gb", prevGb)
-                .putFloat("today_available_gb", availableGb)
-                .putString("last_date", today)
-                .apply()
-        } else {
-            // Same day — just update today's reading
-            prefs.edit()
-                .putFloat("today_available_gb", availableGb)
-                .apply()
+        when {
+            savedDate.isNullOrEmpty() -> {
+                prefs.edit()
+                    .putFloat("today_available_gb", availableGb)
+                    .putString("last_date", today)
+                    .apply()
+            }
+            savedDate != today -> {
+                val prevGb = prefs.getFloat("today_available_gb", -1f)
+                prefs.edit()
+                    .putFloat("yesterday_available_gb", prevGb)
+                    .putString("yesterday_date", savedDate)
+                    .putFloat("today_available_gb", availableGb)
+                    .putString("last_date", today)
+                    .apply()
+            }
+            else -> {
+                prefs.edit().putFloat("today_available_gb", availableGb).apply()
+            }
         }
 
         val yesterdayGb = prefs.getFloat("yesterday_available_gb", -1f)
         val views = RemoteViews(context.packageName, R.layout.widget_storage)
 
-        // Today
-        views.setTextViewText(R.id.tv_today_storage, formatGb(availableGb))
+        // Today label + value
         val todayDisplay = SimpleDateFormat("MM/dd", Locale.US).format(Date())
-        views.setTextViewText(R.id.tv_today_label, "today — $todayDisplay")
+        views.setTextViewText(R.id.tv_today_label, "today ($todayDisplay)")
+        views.setTextViewText(R.id.tv_today_storage, formatGb(availableGb))
 
-        // Yesterday
+        // Yesterday + diff
         if (yesterdayGb >= 0) {
             val diff = availableGb - yesterdayGb
             views.setTextViewText(R.id.tv_yesterday_storage, formatGb(yesterdayGb))
-
             val absDiff = kotlin.math.abs(diff)
-            val diffFormatted = formatGb(absDiff)
             val diffText = when {
-                diff < -0.01f -> "▼ $diffFormatted lost"
-                diff > 0.01f  -> "▲ $diffFormatted freed"
+                diff < -0.01f -> "▼ ${formatGb(absDiff)} lost"
+                diff > 0.01f  -> "▲ ${formatGb(absDiff)} freed"
                 else          -> "no change"
             }
             views.setTextViewText(R.id.tv_yesterday_diff, diffText)
@@ -96,11 +107,15 @@ class StorageWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.tv_yesterday_diff, "no data yet")
         }
 
-        // TEMP: hardcode yesterday for testing — remove this block before release
-        // prefs.edit()
-        //     .putFloat("yesterday_available_gb", 2.5f)  // fake yesterday value
-        //     .putString("yesterday_date", "2026-03-16")
-        //     .apply()
+        // Click to refresh
+        val refreshIntent = Intent(context, StorageWidgetProvider::class.java).apply {
+            action = ACTION_REFRESH
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context, id, refreshIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        views.setOnClickPendingIntent(R.id.widget_storage_root, pendingIntent)
 
         manager.updateAppWidget(id, views)
     }
