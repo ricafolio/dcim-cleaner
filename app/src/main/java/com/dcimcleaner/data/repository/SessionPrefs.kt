@@ -69,4 +69,59 @@ class SessionPrefs(context: Context) {
         val raw = prefs.getString("history_stack", "") ?: ""
         return if (raw.isEmpty()) emptyList() else raw.split("|")
     }
+
+    // --- Filter settings ---
+
+    // "" means no year filter (all years)
+    var filterYear: String
+        get() = prefs.getString("filter_year", "") ?: ""
+        set(v) = prefs.edit().putString("filter_year", v).apply()
+
+    var filterNoRepeatDays: Boolean
+        get() = prefs.getBoolean("filter_no_repeat_days", false)
+        set(v) = prefs.edit().putBoolean("filter_no_repeat_days", v).apply()
+
+    var filterNoRepeatMonths: Boolean
+        get() = prefs.getBoolean("filter_no_repeat_months", false)
+        set(v) = prefs.edit().putBoolean("filter_no_repeat_months", v).apply()
+
+    // Minimum photo count per day/month to be eligible for random pick
+    var filterMinPhotos: Int
+        get() = prefs.getInt("filter_min_photos", 0)
+        set(v) = prefs.edit().putInt("filter_min_photos", v).apply()
+
+    fun activeFilterCount(): Int {
+        var count = 0
+        if (filterYear.isNotEmpty()) count++
+        if (filterNoRepeatDays) count++
+        if (filterNoRepeatMonths) count++
+        if (filterMinPhotos > 0) count++
+        return count
+    }
+
+    // --- Session-visited tracking, used by no-repeat filters ---
+    // Cleared when app restarts (stored in regular prefs but reset via clearVisitedSession)
+
+    fun markVisited(type: String, key: String) {
+        val setKey = if (type == "month") "visited_months" else "visited_days"
+        val current = prefs.getStringSet(setKey, emptySet())?.toMutableSet() ?: mutableSetOf()
+        current.add(key)
+        prefs.edit().putStringSet(setKey, current).apply()
+    }
+
+    fun getVisitedMonths(): Set<String> = prefs.getStringSet("visited_months", emptySet()) ?: emptySet()
+    fun getVisitedDays(): Set<String> = prefs.getStringSet("visited_days", emptySet()) ?: emptySet()
+
+    // Clear only one type — used when a no-repeat filter exhausts its pool and needs to cycle
+    fun clearVisited(type: String) {
+        val setKey = if (type == "month") "visited_months" else "visited_days"
+        prefs.edit().remove(setKey).apply()
+    }
+
+    fun clearVisitedSession() {
+        prefs.edit()
+            .remove("visited_months")
+            .remove("visited_days")
+            .apply()
+    }
 }

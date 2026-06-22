@@ -146,6 +146,27 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
         vm.currentDate.observe(viewLifecycleOwner) { date -> binding.tvDate.text = date }
 
+        vm.noEligibleDate.observe(viewLifecycleOwner) { triggered ->
+            if (triggered == true) {
+                Toast.makeText(
+                    requireContext(),
+                    "No dates match your filters — try adjusting them in Filter Settings",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
+        vm.cycleRestarted.observe(viewLifecycleOwner) { type ->
+            if (type != null) {
+                val label = if (type == "month") "months" else "days"
+                Toast.makeText(
+                    requireContext(),
+                    "You've seen all $label — starting over",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
         if (vm.photos.value.isNullOrEmpty()) {
             arguments?.getString("pick_random")?.let { type ->
                 if (type == "month") vm.pickRandomMonth() else vm.pickRandomDay()

@@ -53,16 +53,69 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
         hasPrevious.value = session.hasHistory()
     }
 
+    val noEligibleDate = MutableLiveData<Boolean>()
+    val cycleRestarted = MutableLiveData<String>() // "month" or "day" — fired when no-repeat pool was exhausted and reset
+
     fun pickRandomMonth() = viewModelScope.launch {
-        val (key, list) = repo.getRandomMonthPhotos()
-        if (key.isEmpty()) return@launch
+        val year = session.filterYear
+        val noRepeat = session.filterNoRepeatMonths
+        val minPhotos = session.filterMinPhotos
+        var visited = session.getVisitedMonths()
+
+        var (key, list) = if (year.isNotEmpty() || noRepeat || minPhotos > 0) {
+            repo.getRandomMonthPhotosFiltered(year, noRepeat, visited, minPhotos)
+        } else {
+            repo.getRandomMonthPhotos()
+        }
+
+        // No-repeat exhausted the pool — reset visited months and retry once
+        if (key.isEmpty() && noRepeat && visited.isNotEmpty()) {
+            session.clearVisited("month")
+            val retry = repo.getRandomMonthPhotosFiltered(year, noRepeat, emptySet(), minPhotos)
+            key = retry.first
+            list = retry.second
+            if (key.isNotEmpty()) {
+                cycleRestarted.value = "month"
+            }
+        }
+
+        if (key.isEmpty()) {
+            noEligibleDate.value = true
+            return@launch
+        }
+        session.markVisited("month", key)
         setDate("month", key)
         photos.value = list
     }
 
     fun pickRandomDay() = viewModelScope.launch {
-        val (key, list) = repo.getRandomDayPhotos()
-        if (key.isEmpty()) return@launch
+        val year = session.filterYear
+        val noRepeat = session.filterNoRepeatDays
+        val minPhotos = session.filterMinPhotos
+        var visited = session.getVisitedDays()
+
+        var (key, list) = if (year.isNotEmpty() || noRepeat || minPhotos > 0) {
+            repo.getRandomDayPhotosFiltered(year, noRepeat, visited, minPhotos)
+        } else {
+            repo.getRandomDayPhotos()
+        }
+
+        // No-repeat exhausted the pool — reset visited days and retry once
+        if (key.isEmpty() && noRepeat && visited.isNotEmpty()) {
+            session.clearVisited("day")
+            val retry = repo.getRandomDayPhotosFiltered(year, noRepeat, emptySet(), minPhotos)
+            key = retry.first
+            list = retry.second
+            if (key.isNotEmpty()) {
+                cycleRestarted.value = "day"
+            }
+        }
+
+        if (key.isEmpty()) {
+            noEligibleDate.value = true
+            return@launch
+        }
+        session.markVisited("day", key)
         setDate("day", key)
         photos.value = list
     }

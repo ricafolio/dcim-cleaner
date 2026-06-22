@@ -36,6 +36,9 @@ class HomeFragment : Fragment() {
         binding.btnRandomDay.setOnClickListener {
             findNavController().navigate(R.id.nav_images, bundleOf("pick_random" to "day"))
         }
+        binding.btnFilterSettings.setOnClickListener {
+            findNavController().navigate(R.id.nav_filter_settings)
+        }
         binding.btnLastVisited.setOnClickListener {
             val date = session.lastVisitedDate
             val type = session.lastVisitedType
@@ -54,6 +57,17 @@ class HomeFragment : Fragment() {
         refreshStats()
         refreshLastVisited()
         refreshTrashButton()
+        refreshFilterBadge()
+    }
+
+    private fun refreshFilterBadge() {
+        val count = session.activeFilterCount()
+        if (count > 0) {
+            binding.tvFilterAppliedBadge.visibility = View.VISIBLE
+            binding.tvFilterAppliedBadge.text = "$count applied"
+        } else {
+            binding.tvFilterAppliedBadge.visibility = View.GONE
+        }
     }
 
     private fun refreshStats() {

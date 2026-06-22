@@ -159,6 +159,47 @@ class PhotoRepository(private val context: Context) {
         return Pair(key, photoDao.getPhotosByDay(key))
     }
 
+    // Returns sorted descending list of distinct years present in the index, e.g. ["2024","2023","2022"]
+    suspend fun getAvailableYears(): List<String> = withContext(Dispatchers.IO) {
+        val months = photoDao.getAllMonthKeys() // "yyyy-MM"
+        months.map { it.substring(0, 4) }.distinct().sortedDescending()
+    }
+
+    // Filtered random month pick — respects year, no-repeat, and min-photo filters
+    suspend fun getRandomMonthPhotosFiltered(
+        year: String,
+        noRepeat: Boolean,
+        visitedMonths: Set<String>,
+        minPhotos: Int
+    ): Pair<String, List<PhotoEntry>> = withContext(Dispatchers.IO) {
+        var keys = photoDao.getAllMonthKeys()
+        if (year.isNotEmpty()) keys = keys.filter { it.startsWith(year) }
+        if (noRepeat) keys = keys.filter { it !in visitedMonths }
+        if (minPhotos > 0) {
+            val monthStats = statsDao.getMonthStatsSync().associateBy { it.date }
+            keys = keys.filter { (monthStats[it]?.fileCount ?: 0) >= minPhotos }
+        }
+        val key = keys.randomOrNull()
+            ?: return@withContext Pair("", emptyList()) // no eligible months
+        Pair(key, photoDao.getPhotosByMonth(key))
+    }
+
+    // Filtered random day pick — respects year, no-repeat, and min-photo filters
+    suspend fun getRandomDayPhotosFiltered(
+        year: String,
+        noRepeat: Boolean,
+        visitedDays: Set<String>,
+        minPhotos: Int
+    ): Pair<String, List<PhotoEntry>> = withContext(Dispatchers.IO) {
+        var stats = statsDao.getDayStatsSync()
+        if (year.isNotEmpty()) stats = stats.filter { it.date.startsWith(year) }
+        if (noRepeat) stats = stats.filter { it.date !in visitedDays }
+        if (minPhotos > 0) stats = stats.filter { it.fileCount >= minPhotos }
+        val key = stats.randomOrNull()?.date
+            ?: return@withContext Pair("", emptyList()) // no eligible days
+        Pair(key, photoDao.getPhotosByDay(key))
+    }
+
     suspend fun getPhotosByMonth(month: String) = photoDao.getPhotosByMonth(month)
     suspend fun getPhotosByDay(day: String) = photoDao.getPhotosByDay(day)
 
