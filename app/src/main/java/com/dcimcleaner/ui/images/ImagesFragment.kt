@@ -114,11 +114,23 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         }
 
         vm.photos.observe(viewLifecycleOwner) { photos ->
-            adapter.submitList(photos)
+            // Completion callback fires only once the DiffUtil calculation actually finishes —
+            // this is what lets us safely re-enable the random buttons without racing the diff.
+            adapter.submitList(photos) {
+                vm.onGridUpdateComplete()
+                binding.recyclerView.scrollToPosition(0)
+            }
             val totalMb = photos.sumOf { it.sizeMb.toDouble() }.toFloat()
             val sizeText = if (totalMb >= 1024f) "${"%.1f".format(totalMb / 1024f)} GB"
                            else "${"%.1f".format(totalMb)} MB"
             binding.tvStats.text = "${photos.size} photos · $sizeText"
+        }
+
+        vm.isLoadingRandom.observe(viewLifecycleOwner) { loading ->
+            // Block new random taps until the current pick has fully rendered —
+            // prevents rapid taps from cancelling each other's DiffUtil calculation
+            binding.btnRandomMonth.isEnabled = !loading
+            binding.btnRandomDay.isEnabled = !loading
         }
 
         vm.spanCount.observe(viewLifecycleOwner) { span ->

@@ -55,69 +55,89 @@ class ImagesViewModel(app: Application) : AndroidViewModel(app) {
 
     val noEligibleDate = MutableLiveData<Boolean>()
     val cycleRestarted = MutableLiveData<String>() // "month" or "day" — fired when no-repeat pool was exhausted and reset
+    val isLoadingRandom = MutableLiveData(false) // true while a random pick is fetching/swapping the grid
 
-    fun pickRandomMonth() = viewModelScope.launch {
-        val year = session.filterYear
-        val noRepeat = session.filterNoRepeatMonths
-        val minPhotos = session.filterMinPhotos
-        var visited = session.getVisitedMonths()
+    private var randomPickJob: kotlinx.coroutines.Job? = null
 
-        var (key, list) = if (year.isNotEmpty() || noRepeat || minPhotos > 0) {
-            repo.getRandomMonthPhotosFiltered(year, noRepeat, visited, minPhotos)
-        } else {
-            repo.getRandomMonthPhotos()
-        }
+    fun pickRandomMonth() {
+        randomPickJob?.cancel()
+        randomPickJob = viewModelScope.launch {
+            isLoadingRandom.value = true
+            val year = session.filterYear
+            val noRepeat = session.filterNoRepeatMonths
+            val minPhotos = session.filterMinPhotos
+            var visited = session.getVisitedMonths()
 
-        // No-repeat exhausted the pool — reset visited months and retry once
-        if (key.isEmpty() && noRepeat && visited.isNotEmpty()) {
-            session.clearVisited("month")
-            val retry = repo.getRandomMonthPhotosFiltered(year, noRepeat, emptySet(), minPhotos)
-            key = retry.first
-            list = retry.second
-            if (key.isNotEmpty()) {
-                cycleRestarted.value = "month"
+            var (key, list) = if (year.isNotEmpty() || noRepeat || minPhotos > 0) {
+                repo.getRandomMonthPhotosFiltered(year, noRepeat, visited, minPhotos)
+            } else {
+                repo.getRandomMonthPhotos()
             }
-        }
 
-        if (key.isEmpty()) {
-            noEligibleDate.value = true
-            return@launch
+            // No-repeat exhausted the pool — reset visited months and retry once
+            if (key.isEmpty() && noRepeat && visited.isNotEmpty()) {
+                session.clearVisited("month")
+                val retry = repo.getRandomMonthPhotosFiltered(year, noRepeat, emptySet(), minPhotos)
+                key = retry.first
+                list = retry.second
+                if (key.isNotEmpty()) {
+                    cycleRestarted.value = "month"
+                }
+            }
+
+            if (key.isEmpty()) {
+                noEligibleDate.value = true
+                isLoadingRandom.value = false
+                return@launch
+            }
+            session.markVisited("month", key)
+            setDate("month", key)
+            photos.value = list
+            // isLoadingRandom cleared by the Fragment once submitList's diff actually finishes
         }
-        session.markVisited("month", key)
-        setDate("month", key)
-        photos.value = list
     }
 
-    fun pickRandomDay() = viewModelScope.launch {
-        val year = session.filterYear
-        val noRepeat = session.filterNoRepeatDays
-        val minPhotos = session.filterMinPhotos
-        var visited = session.getVisitedDays()
+    fun pickRandomDay() {
+        randomPickJob?.cancel()
+        randomPickJob = viewModelScope.launch {
+            isLoadingRandom.value = true
+            val year = session.filterYear
+            val noRepeat = session.filterNoRepeatDays
+            val minPhotos = session.filterMinPhotos
+            var visited = session.getVisitedDays()
 
-        var (key, list) = if (year.isNotEmpty() || noRepeat || minPhotos > 0) {
-            repo.getRandomDayPhotosFiltered(year, noRepeat, visited, minPhotos)
-        } else {
-            repo.getRandomDayPhotos()
-        }
-
-        // No-repeat exhausted the pool — reset visited days and retry once
-        if (key.isEmpty() && noRepeat && visited.isNotEmpty()) {
-            session.clearVisited("day")
-            val retry = repo.getRandomDayPhotosFiltered(year, noRepeat, emptySet(), minPhotos)
-            key = retry.first
-            list = retry.second
-            if (key.isNotEmpty()) {
-                cycleRestarted.value = "day"
+            var (key, list) = if (year.isNotEmpty() || noRepeat || minPhotos > 0) {
+                repo.getRandomDayPhotosFiltered(year, noRepeat, visited, minPhotos)
+            } else {
+                repo.getRandomDayPhotos()
             }
-        }
 
-        if (key.isEmpty()) {
-            noEligibleDate.value = true
-            return@launch
+            // No-repeat exhausted the pool — reset visited days and retry once
+            if (key.isEmpty() && noRepeat && visited.isNotEmpty()) {
+                session.clearVisited("day")
+                val retry = repo.getRandomDayPhotosFiltered(year, noRepeat, emptySet(), minPhotos)
+                key = retry.first
+                list = retry.second
+                if (key.isNotEmpty()) {
+                    cycleRestarted.value = "day"
+                }
+            }
+
+            if (key.isEmpty()) {
+                noEligibleDate.value = true
+                isLoadingRandom.value = false
+                return@launch
+            }
+            session.markVisited("day", key)
+            setDate("day", key)
+            photos.value = list
+            // isLoadingRandom cleared by the Fragment once submitList's diff actually finishes
         }
-        session.markVisited("day", key)
-        setDate("day", key)
-        photos.value = list
+    }
+
+    // Called by the Fragment once adapter.submitList's diff calculation has actually completed
+    fun onGridUpdateComplete() {
+        isLoadingRandom.value = false
     }
 
     fun loadByMonth(month: String) = viewModelScope.launch {
