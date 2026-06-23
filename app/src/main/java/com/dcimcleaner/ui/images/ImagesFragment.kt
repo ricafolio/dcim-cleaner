@@ -32,6 +32,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
     private var gridToast: Toast? = null
     private var trashToast: Toast? = null
     private var gridToggleInitialized = false
+    private var pendingRandomScrollToTop = false
 
     // Queue for entries waiting to be trashed while a system dialog is open
     private var pendingTrashEntry: PhotoEntry? = null
@@ -93,8 +94,14 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
         val initialSpan = vm.spanCount.value ?: 3
         updateGridLayout(initialSpan)
 
-        binding.btnRandomMonth.setOnClickListener { vm.pickRandomMonth() }
-        binding.btnRandomDay.setOnClickListener { vm.pickRandomDay() }
+        binding.btnRandomMonth.setOnClickListener {
+            pendingRandomScrollToTop = true
+            vm.pickRandomMonth()
+        }
+        binding.btnRandomDay.setOnClickListener {
+            pendingRandomScrollToTop = true
+            vm.pickRandomDay()
+        }
         binding.btnGridToggle.setOnClickListener { vm.toggleGrid() }
 
         binding.btnTrashContainer.setOnClickListener {
@@ -118,7 +125,12 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             // this is what lets us safely re-enable the random buttons without racing the diff.
             adapter.submitList(photos) {
                 vm.onGridUpdateComplete()
-                binding.recyclerView.scrollToPosition(0)
+                // Only scroll to top when this update came from a Random Month/Day tap —
+                // trashing a photo also mutates the list and shouldn't jump the scroll position
+                if (pendingRandomScrollToTop) {
+                    binding.recyclerView.scrollToPosition(0)
+                    pendingRandomScrollToTop = false
+                }
             }
             val totalMb = photos.sumOf { it.sizeMb.toDouble() }.toFloat()
             val sizeText = if (totalMb >= 1024f) "${"%.1f".format(totalMb / 1024f)} GB"
@@ -181,6 +193,7 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
 
         if (vm.photos.value.isNullOrEmpty()) {
             arguments?.getString("pick_random")?.let { type ->
+                pendingRandomScrollToTop = true
                 if (type == "month") vm.pickRandomMonth() else vm.pickRandomDay()
             }
             arguments?.getString("load_month")?.let { vm.loadByMonth(it) }
