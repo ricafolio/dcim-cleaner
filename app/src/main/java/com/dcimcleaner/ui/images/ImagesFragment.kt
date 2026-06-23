@@ -143,6 +143,16 @@ class ImagesFragment : Fragment(), IndexCompleteListener {
             // prevents rapid taps from cancelling each other's DiffUtil calculation
             binding.btnRandomMonth.isEnabled = !loading
             binding.btnRandomDay.isEnabled = !loading
+
+            // Show spinner next to the toolbar title while loading
+            (activity as? com.dcimcleaner.MainActivity)?.setGridLoadingSpinner(loading)
+
+            if (loading) {
+                // Empty the grid immediately so it doesn't look frozen on the old photos
+                // while the new month/day is being fetched and diffed
+                adapter.submitList(emptyList())
+                binding.tvStats.text = ""
+            }
         }
 
         vm.spanCount.observe(viewLifecycleOwner) { span ->

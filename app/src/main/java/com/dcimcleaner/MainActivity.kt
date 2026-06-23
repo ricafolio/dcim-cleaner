@@ -271,6 +271,12 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    fun setGridLoadingSpinner(isLoading: Boolean) {
+        val visibility = if (isLoading) android.view.View.VISIBLE else android.view.View.GONE
+
+        binding.appBarMain.toolbar.findViewById<android.view.View>(R.id.toolbar_spinner)?.visibility = visibility
+    }
+
     override fun onSupportNavigateUp() =
         findNavController(R.id.nav_host_fragment).navigateUp(appBarConfig) || super.onSupportNavigateUp()
 }
